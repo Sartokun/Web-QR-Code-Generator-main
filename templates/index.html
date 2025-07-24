@@ -79,6 +79,8 @@
                 {% for logo in logos %}
                 <div class="logo-thumb" data-logo="{{ logo }}">
                     <img src="{{ url_for('static', filename='logo/' ~ logo) }}" alt="logo" />
+                    <button type="button" class="logo-delete-btn"
+                        onclick="confirmDeleteLogo('{{ logo }}')">&times;</button>
                 </div>
                 {% endfor %}
             </div>

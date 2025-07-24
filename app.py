@@ -4,6 +4,8 @@ import os
 from qrcode import QRCode, constants
 from PIL import Image, ImageDraw, ImageColor
 import numpy as np
+from flask import send_from_directory
+from flask import jsonify
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "static/logo"
@@ -109,6 +111,19 @@ def preview_qr():
     img.save(buf, format="PNG")
     buf.seek(0)
     return send_file(buf, mimetype="image/png")
+
+@app.route('/delete_logo/<logo_name>', methods=['DELETE'])
+def delete_logo(logo_name):
+    logo_path = os.path.join('static', 'logo', logo_name)
+    try:
+        if os.path.exists(logo_path):
+            os.remove(logo_path)
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'ไม่พบไฟล์'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

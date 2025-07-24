@@ -89,3 +89,19 @@ document.addEventListener("DOMContentLoaded", function() {
         updatePreview();
     };
 });
+function confirmDeleteLogo(logoName) {
+    if (!logoName) return;
+    const ok = confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบโลโก้ "${logoName}" ?`);
+    if (ok) {
+        fetch(`/delete_logo/${encodeURIComponent(logoName)}`, {
+            method: "DELETE"
+        }).then(res => {
+            if (res.ok) {
+                alert("ลบโลโก้เรียบร้อยแล้ว");
+                location.reload();
+            } else {
+                alert("ไม่สามารถลบโลโก้ได้");
+            }
+        });
+    }
+}
