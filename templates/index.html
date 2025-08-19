@@ -2,69 +2,270 @@
 <html lang="th">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>QR Code Generator</title>
-    <meta name="viewport" content="width=480, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <!-- Coloris -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='coloris.css') }}">
-    <!-- Main custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='coloris.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
 
 <body>
     <div class="qr-bg">
-        <div class="container qr-card">
-            <h2 class="text-center mb-4">QR Code Generator</h2>
-            <div class="preview text-center mb-4">
-                <span id="qrPreviewBG" class="qr-preview-bg">
-                    <img id="qrPreview" src="" alt="QR Preview" class="qr-preview-img">
-                </span>
-            </div>
-            <form id="qrForm" method="POST" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label for="data" class="form-label">ข้อความ/URL</label>
-                    <input type="text" class="form-control" id="data" name="data" required
-                        placeholder="กรอก URL หรือข้อความ...">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" style="font-weight: bold;">โลโก้ (ไม่บังคับ)</label>
-                    <div class="logo-row">
-                        <button type="button" class="btn btn-info" id="openLogoPicker">เลือกโลโก้</button>
-                        <div id="logoMainPreview" class="logo-main-preview mt-2"></div>
-                        <input type="hidden" name="logo" id="logoInput" value="">
-                        <div class="logo-upload-col">
-                            <input type="file" id="logoUpload" class="form-control" onchange="showUploadFileName()">
-                            <button type="button" class="btn btn-secondary mt-2"
-                                onclick="uploadLogo()">อัปโหลดโลโก้</button>
-                            <div id="uploadFileName" class="upload-filename mt-1"></div>
-                        </div>
-                    </div>
+        <div class="container-xl app-layout">
+
+            <!-- Left: Preview & intro -->
+            <section class="panel preview-panel">
+                <header class="page-header">
+                    <h1 class="title">QR Code Generator</h1>
+                    <p class="subtitle">สร้าง QR โทนแบรนด์ของคุณได้ทันที — ใส่โลโก้ ปรับสี และพื้นหลังโปร่งใส</p>
+                </header>
+
+                <div class="preview text-center">
+                    <span id="qrPreviewBG" class="qr-preview-bg">
+                        <img id="qrPreview" alt="QR Preview" class="qr-preview-img" />
+                    </span>
+                    <div class="preview-hint">ลองพิมพ์ข้อความหรือ URL ทางฝั่งขวา พรีวิวจะอัปเดตแบบเรียลไทม์</div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-12 col-md-6 mb-2 mb-md-0">
-                        <label>สี QR</label>
-                        <input type="text" name="fill_color" class="form-control coloris-input" data-coloris
-                            value="#000000" autocomplete="off">
+                <ul class="mini-tips">
+                    <li><strong>Error Correction</strong> สูง (H) → ซ่อมข้อผิดพลาดได้มาก เหมาะกับใส่โลโก้
+                        แต่เก็บข้อมูลได้น้อยลง</li>
+                    <li>เลือก <strong>พื้นหลังโปร่งใส</strong> ถ้าจะเอาไปวางบนภาพ/สีอื่น</li>
+                    <li>ตั้ง <strong>ขนาดไฟล์</strong> ให้เหมาะกับงานพิมพ์หรือโพสต์ออนไลน์</li>
+                </ul>
+            </section>
+
+            <!-- Right: Form -->
+            <section class="panel form-panel">
+                <form id="qrForm" method="POST" enctype="multipart/form-data" class="form-shell">
+
+                    <div class="form-body">
+                        <!-- === Data Builder === -->
+                        <input type="hidden" id="data" name="data" />
+
+                        <div class="mb-3">
+                            <label for="data_type" class="form-label">ประเภทข้อมูล</label>
+                            <select id="data_type" name="data_type" class="form-select">
+                                <option value="url" selected>URL</option>
+                                <option value="text">ข้อความ (Text)</option>
+                                <option value="wifi">Wi-Fi (SSID/Password)</option>
+                                <option value="email">Email</option>
+                                <option value="sms">SMS</option>
+                                <option value="pdf">PDF (ลิงก์)</option>
+                                <option value="mp3">MP3 (ลิงก์)</option>
+                                <option value="image">รูปภาพ (ลิงก์)</option>
+                            </select>
+                        </div>
+
+                        <div id="data_type_fields">
+                            <!-- URL -->
+                            <div class="dt-group" data-type="url">
+                                <label class="form-label">ลิงก์ URL</label>
+                                <input id="dt_url" type="url" class="form-control" placeholder="https://example.com">
+                            </div>
+
+                            <!-- Text -->
+                            <div class="dt-group" data-type="text" style="display:none">
+                                <label class="form-label">ข้อความ</label>
+                                <textarea id="dt_text" class="form-control" rows="3"
+                                    placeholder="พิมพ์ข้อความที่ต้องการใส่ใน QR"></textarea>
+                            </div>
+
+                            <!-- Wi-Fi -->
+                            <div class="dt-group" data-type="wifi" style="display:none">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">SSID</label>
+                                        <input id="wifi_ssid" class="form-control" placeholder="ชื่อเครือข่าย">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">การเข้ารหัส</label>
+                                        <select id="wifi_auth" class="form-select">
+                                            <option value="WPA" selected>WPA/WPA2/WPA3</option>
+                                            <option value="WEP">WEP</option>
+                                            <option value="nopass">เปิด (ไม่มีรหัส)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label">รหัสผ่าน</label>
+                                        <input id="wifi_pass" class="form-control" placeholder="รหัสผ่าน"
+                                            autocomplete="off">
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <div class="form-check">
+                                            <input id="wifi_hidden" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="wifi_hidden">ซ่อนเครือข่าย</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Email -->
+                            <div class="dt-group" data-type="email" style="display:none">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">ถึง (Email)</label>
+                                        <input id="email_to" type="email" class="form-control"
+                                            placeholder="you@example.com">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">หัวเรื่อง</label>
+                                        <input id="email_subject" class="form-control" placeholder="เรื่อง">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">เนื้อหา</label>
+                                        <textarea id="email_body" class="form-control" rows="3"
+                                            placeholder="ข้อความ"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SMS -->
+                            <div class="dt-group" data-type="sms" style="display:none">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">หมายเลข</label>
+                                        <input id="sms_to" class="form-control" placeholder="0801234567">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">ข้อความ</label>
+                                        <input id="sms_body" class="form-control" placeholder="ข้อความ SMS">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PDF / MP3 / Image -->
+                            <div class="dt-group" data-type="pdf" style="display:none">
+                                <label class="form-label">ลิงก์ไฟล์ PDF</label>
+                                <input id="dt_pdf" type="url" class="form-control" placeholder="https://.../file.pdf">
+                            </div>
+                            <div class="dt-group" data-type="mp3" style="display:none">
+                                <label class="form-label">ลิงก์ไฟล์ MP3</label>
+                                <input id="dt_mp3" type="url" class="form-control" placeholder="https://.../audio.mp3">
+                            </div>
+                            <div class="dt-group" data-type="image" style="display:none">
+                                <label class="form-label">ลิงก์รูปภาพ</label>
+                                <input id="dt_image" type="url" class="form-control"
+                                    placeholder="https://.../image.jpg">
+                            </div>
+                        </div>
+
+                        <div class="data-preview">
+                            <div class="label">ข้อมูลที่เข้ารหัส</div>
+                            <pre id="dataPreview" class="code-box">(ว่าง)</pre>
+                        </div>
+
+                        <!-- Logo -->
+                        <div class="mt-4">
+                            <div class="section-title">โลโก้ (ไม่บังคับ)</div>
+                            <div class="logo-row">
+                                <button type="button" class="btn btn-info" id="openLogoPicker">เลือกโลโก้</button>
+                                <div id="logoMainPreview" class="logo-main-preview dropzone mt-2">
+                                    ลาก & ปล่อยไฟล์โลโก้ที่นี่ (รองรับ .png / .jpg)
+                                </div>
+                                <input type="hidden" name="logo" id="logoInput" value="">
+                                <div class="logo-upload-col">
+                                    <div class="logo-controls">
+                                        <label for="logoUpload" class="btn btn-file">เลือกไฟล์</label>
+                                        <span id="uploadFileName"
+                                            class="upload-filename file-pill">ยังไม่ได้เลือกไฟล์</span>
+                                        <button type="button" id="uploadLogoBtn" class="btn btn-upload" disabled
+                                            onclick="uploadLogo()">อัปโหลดโลโก้</button>
+                                    </div>
+                                    <input id="logoUpload" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                                        onchange="showUploadFileName()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced options collapsed -->
+                        <details class="adv mt-4">
+                            <summary>ตัวเลือกขั้นสูง</summary>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="ecc" class="form-label">Error Correction</label>
+                                    <select id="ecc" name="ecc" class="form-select">
+                                        <option value="L">L (≈7%)</option>
+                                        <option value="M">M (≈15%)</option>
+                                        <option value="Q">Q (≈25%)</option>
+                                        <option value="H" selected>H (≈30%)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="transparent"
+                                            id="transparent">
+                                        <label class="form-check-label" for="transparent">พื้นหลังโปร่งใส</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-6">
+                                    <label for="fill_style" class="form-label">สไตล์สี</label>
+                                    <select id="fill_style" name="fill_style" class="form-select">
+                                        <option value="solid" selected>สีเดียว</option>
+                                        <option value="linear">ไล่สี (Linear)</option>
+                                        <option value="radial">ไล่สี (Radial)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6" id="color2Wrap">
+                                    <label for="fill_color2" class="form-label">สีที่สอง (สำหรับไล่สี)</label>
+                                    <input type="text" id="fill_color2" name="fill_color2"
+                                        class="form-control coloris-input" data-coloris value="#ff85c0"
+                                        autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-6">
+                                    <label class="form-label">สี QR</label>
+                                    <input type="text" name="fill_color" class="form-control coloris-input" data-coloris
+                                        value="#000000" autocomplete="off">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">สีพื้นหลัง</label>
+                                    <input type="text" name="back_color" class="form-control coloris-input" data-coloris
+                                        value="#ffffff" autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-6">
+                                    <label for="size_px" class="form-label">ขนาดไฟล์ (พิกเซล)</label>
+                                    <select id="size_px" name="size_px" class="form-select">
+                                        <option value="256">256 × 256</option>
+                                        <option value="512">512 × 512</option>
+                                        <option value="1024" selected>1024 × 1024</option>
+                                        <option value="2048">2048 × 2048</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="out_format" class="form-label">ชนิดไฟล์ที่ดาวน์โหลด</label>
+                                    <select id="out_format" name="out_format" class="form-select">
+                                        <option value="png" selected>PNG (รองรับโลโก้/โปร่งใส)</option>
+                                        <option value="svg">SVG (เวคเตอร์)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </details>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <label>สีพื้นหลัง</label>
-                        <input type="text" name="back_color" class="form-control coloris-input" data-coloris
-                            value="#ffffff" autocomplete="off">
+
+                    <!-- Sticky actions -->
+                    <div class="form-actions sticky">
+                        <button type="submit" class="btn btn-primary w-100">สร้าง & ดาวน์โหลด QR Code</button>
                     </div>
-                </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" name="transparent" id="transparent">
-                    <label class="form-check-label" for="transparent">พื้นหลังโปร่งใส</label>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">สร้าง & ดาวน์โหลด QR Code</button>
-            </form>
+                </form>
+            </section>
         </div>
     </div>
+
     <script src="{{ url_for('static', filename='coloris.js') }}"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 
+    <!-- Logo Gallery Modal -->
     <div id="logoGalleryModal" class="logo-gallery-modal" style="display:none;">
         <div class="logo-gallery-overlay"></div>
         <div class="logo-gallery-modal-content">
@@ -73,9 +274,7 @@
                 <button type="button" class="close" id="closeLogoPicker">&times;</button>
             </div>
             <div class="logo-gallery" id="logoGalleryList">
-                <div class="logo-thumb no-logo" data-logo="">
-                    <span>(ไม่มีโลโก้)</span>
-                </div>
+                <div class="logo-thumb no-logo" data-logo=""><span>(ไม่มีโลโก้)</span></div>
                 {% for logo in logos %}
                 <div class="logo-thumb" data-logo="{{ logo }}">
                     <img src="{{ url_for('static', filename='logo/' ~ logo) }}" alt="logo" />
@@ -88,7 +287,7 @@
     </div>
 
     <div class="qr-footer-credit">
-        สร้างโดย <strong>Sarto_🌸</strong> | โปรเจกต์ QR Code Generator ใช้ฟรีและไม่มีโฆษณา
+        สร้างโดย <strong>Sarto_🌸</strong> | V 2.0
     </div>
 </body>
 

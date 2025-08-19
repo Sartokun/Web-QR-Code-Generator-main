@@ -1,58 +1,163 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, jsonify
 from io import BytesIO
-import os
+import os, math
 from qrcode import QRCode, constants
+from qrcode.image.svg import SvgPathImage  # สำหรับ SVG
 from PIL import Image, ImageDraw, ImageColor
 import numpy as np
-from flask import send_from_directory
-from flask import jsonify
+from werkzeug.utils import secure_filename
+from pathlib import Path
 
 app = Flask(__name__)
+
 UPLOAD_FOLDER = "static/logo"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-def generate_qr_code(data, logo_path=None, fill_color="#000", back_color="#fff", transparent=False):
+# จำกัดขนาดไฟล์สูงสุด 2MB
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
+ALLOWED_EXT = {"png", "jpg", "jpeg"}
+
+# --- เพิ่ม helper สำหรับเลือกระดับ Error Correction ---
+ECC_MAP = {
+    "L": constants.ERROR_CORRECT_L,  # ~7%
+    "M": constants.ERROR_CORRECT_M,  # ~15%
+    "Q": constants.ERROR_CORRECT_Q,  # ~25%
+    "H": constants.ERROR_CORRECT_H,  # ~30%
+}
+def parse_ecc(val: str):
+    return ECC_MAP.get((val or "H").upper(), constants.ERROR_CORRECT_H)
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT
+
+
+# ===== เพิ่ม helper ทำไล่สี =====
+def _linear_gradient(size, c1, c2):
+    import numpy as np
+    w, h = size
+    x = np.linspace(0.0, 1.0, w, dtype=np.float32)
+    y = np.linspace(0.0, 1.0, h, dtype=np.float32)
+    t = (x + y[:, None]) * 0.5  # ไล่จากมุมซ้ายบน -> ขวาล่าง
+    c1 = np.array(c1, dtype=np.float32)
+    c2 = np.array(c2, dtype=np.float32)
+    rgb = (c1 + (c2 - c1) * t[..., None]).clip(0, 255).astype(np.uint8)
+    a = np.full((h, w, 1), 255, dtype=np.uint8)
+    return Image.fromarray(np.concatenate([rgb, a], axis=2), "RGBA")
+
+def _radial_gradient(size, c1, c2):
+    import numpy as np
+    w, h = size
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    yy, xx = np.ogrid[0:h, 0:w]
+    r = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
+    r = (r / r.max()).astype(np.float32)
+    c1 = np.array(c1, dtype=np.float32)
+    c2 = np.array(c2, dtype=np.float32)
+    rgb = (c1 + (c2 - c1) * r[..., None]).clip(0, 255).astype(np.uint8)
+    a = np.full((h, w, 1), 255, dtype=np.uint8)
+    return Image.fromarray(np.concatenate([rgb, a], axis=2), "RGBA")
+
+
+def generate_qr_code_png(
+    data,
+    logo_path=None,
+    fill_color="#000",
+    back_color="#fff",
+    transparent=False,
+    size_px=None,
+    ecc="H",
+    fill_style="solid",       # 'solid' | 'linear' | 'radial'
+    fill_color2="#000000"     # ใช้เมื่อเป็นไล่สี
+):
+    """
+    สร้าง QR PNG พร้อมรองรับไล่สี (Linear/Radial) โดยใช้ QR เป็น 'มาสก์'
+    """
+    qr = QRCode(version=5, error_correction=parse_ecc(ecc), box_size=10, border=4)
+    qr.add_data(data)
+    qr.make(fit=True)
+
+    # ปรับขนาดให้ใกล้ size_px ที่ขอ
+    if size_px:
+        modules = qr.modules_count + qr.border * 2
+        qr.box_size = max(1, math.ceil(size_px / modules))
+
+    # สร้างภาพมาสก์จาก QR (ดำ-ขาว) แล้ว invert ให้โมดูล = 255
+    mask_gray = qr.make_image(fill_color="#000000", back_color="#ffffff").convert("L")
+    w, h = mask_gray.size
+    mask = mask_gray.point(lambda p: 255 - p)  # ดำ->255, ขาว->0
+
+    # พื้นหลัง
+    if transparent:
+        base = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    else:
+        bg = ImageColor.getrgb(back_color)
+        base = Image.new("RGBA", (w, h), (*bg, 255))
+
+    # เลเยอร์สีของโมดูล
+    c1 = ImageColor.getrgb(fill_color)
+    if fill_style == "linear":
+        c2 = ImageColor.getrgb(fill_color2 or fill_color)
+        color_img = _linear_gradient((w, h), c1, c2)
+    elif fill_style == "radial":
+        c2 = ImageColor.getrgb(fill_color2 or fill_color)
+        color_img = _radial_gradient((w, h), c1, c2)
+    else:
+        color_img = Image.new("RGBA", (w, h), (*c1, 255))
+
+    # ผสมสีเข้ากับพื้นหลังด้วยมาสก์ QR
+    base.paste(color_img, (0, 0), mask)
+
+    # โลโก้ (ถ้ามี)
+    if logo_path and os.path.exists(logo_path):
+        logo_size = w // 4
+        logo = resize_logo_keep_ratio_with_padding(logo_path, logo_size, pad_ratio=0.13)
+        # กล่องรองโลโก้
+        box_color = (255, 255, 255, 255) if not transparent else (255, 255, 255, 0)
+        x = (w - logo_size) // 2
+        y = (h - logo_size) // 2
+        box_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(box_layer).rectangle([x, y, x + logo_size, y + logo_size], fill=box_color)
+        base = Image.alpha_composite(base, box_layer)
+        base.paste(logo, (x, y), mask=logo)
+
+    # บังคับขนาดปลายทางตามที่เลือก (รักษาความคม)
+    if size_px and (base.width != size_px or base.height != size_px):
+        base = base.resize((size_px, size_px), Image.NEAREST)
+
+    return base
+
+
+def generate_qr_code_svg(data, fill_color="#000", back_color="#fff", transparent=False,ecc="H"):
+    """
+    สร้าง SVG (ไม่รองรับโลโก้ในเวอร์ชันนี้)
+    """
     qr = QRCode(
         version=5,
-        error_correction=constants.ERROR_CORRECT_H,
+        error_correction=parse_ecc(ecc),
         box_size=10,
         border=4
     )
-
     qr.add_data(data)
     qr.make(fit=True)
-    # รับ HEX/RGB ได้หมด
-    qr_img = qr.make_image(fill_color=fill_color, back_color=back_color).convert("RGBA")
-    qr_width, qr_height = qr_img.size
-    logo = None
-    if logo_path and os.path.exists(logo_path):
-        logo_size = qr_width // 4
-        logo = resize_logo_keep_ratio_with_padding(logo_path, logo_size, pad_ratio=0.13)
-        logo_pos = ((qr_width - logo_size) // 2, (qr_height - logo_size) // 2)
-        logo_box = (logo_pos[0], logo_pos[1], logo_pos[0] + logo_size, logo_pos[1] + logo_size)
-        box_color = (255, 255, 255, 255) if not transparent else (255,255,255,0)
-        box_layer = Image.new("RGBA", qr_img.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(box_layer)
-        draw.rectangle(logo_box, fill=box_color)
-        qr_img = Image.alpha_composite(qr_img, box_layer)
-        qr_img.paste(logo, logo_pos, mask=logo)
-    if transparent:
-        qr_array = np.array(qr_img)
-        r, g, b, a = qr_array[:, :, 0], qr_array[:, :, 1], qr_array[:, :, 2], qr_array[:, :, 3]
-        target_color = ImageColor.getrgb(back_color)
-        mask = (r == target_color[0]) & (g == target_color[1]) & (b == target_color[2])
-        qr_array[:, :, 3] = np.where(mask, 0, a)
-        qr_img = Image.fromarray(qr_array)
-    if logo is not None:
-        logo_pos = ((qr_width - logo.size[0]) // 2, (qr_height - logo.size[1]) // 2)
-        qr_img.paste(logo, logo_pos, mask=logo)
-    return qr_img
+
+    bg = None if transparent else back_color
+    img = qr.make_image(
+        image_factory=SvgPathImage,
+        fill_color=fill_color,
+        back_color=bg
+    )
+    # qrcode.svg image มีเมธอด to_string()
+    svg_bytes = img.to_string()
+    return svg_bytes
+
 
 def trim_transparent(img):
     bbox = img.getbbox()
     if bbox:
         return img.crop(bbox)
     return img
+
 
 def resize_logo_keep_ratio_with_padding(logo_path, box_size, pad_ratio=0.1):
     logo = Image.open(logo_path).convert("RGBA")
@@ -73,30 +178,86 @@ def resize_logo_keep_ratio_with_padding(logo_path, box_size, pad_ratio=0.1):
     logo_square.paste(logo_resized, (paste_x, paste_y), mask=logo_resized)
     return logo_square
 
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     logos = [f for f in os.listdir(UPLOAD_FOLDER) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+    ecc = (request.form.get("ecc") or "H").upper()
     if request.method == "POST":
         data = request.form.get("data", "")
         fill_color = request.form.get("fill_color", "#000")
         back_color = request.form.get("back_color", "#fff")
         transparent = bool(request.form.get("transparent"))
+        fill_style = (request.form.get("fill_style") or "solid").lower()
+        fill_color2 = request.form.get("fill_color2", "#000000")
+
+        out_format = (request.form.get("out_format") or "png").lower()
+        try:
+            size_px = int(request.form.get("size_px") or "1024")
+        except Exception:
+            size_px = 1024
+
         logo_name = request.form.get("logo")
         logo_path = os.path.join(UPLOAD_FOLDER, logo_name) if logo_name else None
-        img = generate_qr_code(data, logo_path, fill_color, back_color, transparent)
+
+        if out_format == "svg":
+            # SVG (เวอร์ชันแรกไม่รองรับโลโก้)
+            if logo_path:
+                return "SVG download does not support logo in this version. Please remove the logo or choose PNG.", 400
+            svg_bytes = generate_qr_code_svg(
+                data,
+                fill_color=fill_color,
+                back_color=back_color,
+                transparent=transparent,
+                ecc=ecc
+            )
+            buf = BytesIO(svg_bytes)
+            buf.seek(0)
+            return send_file(buf, mimetype="image/svg+xml", as_attachment=True, download_name="qr_code.svg")
+
+        # PNG
+        img = generate_qr_code_png(
+            data,
+            logo_path,
+            fill_color,
+            back_color,
+            transparent,
+            size_px=size_px,
+            ecc=ecc,
+            fill_style=fill_style,
+            fill_color2=fill_color2
+        )
         buf = BytesIO()
         img.save(buf, format="PNG")
         buf.seek(0)
         return send_file(buf, mimetype="image/png", as_attachment=True, download_name="qr_code.png")
+
     return render_template("index.html", logos=logos)
+
 
 @app.route("/upload_logo", methods=["POST"])
 def upload_logo():
-    file = request.files["logo"]
-    if file:
-        path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(path)
+    file = request.files.get("logo")
+    if not file or file.filename == "":
+        return "No file selected", 400
+    if not allowed_file(file.filename):
+        return "Invalid file type. Allowed: .png, .jpg, .jpeg", 400
+
+    fname = secure_filename(file.filename)
+    save_path = os.path.join(UPLOAD_FOLDER, fname)
+    try:
+        img = Image.open(file.stream)
+        img.verify()
+        fmt = (img.format or "").upper()
+        if fmt not in {"PNG", "JPEG"}:
+            return "Invalid image format. Only PNG or JPEG are allowed.", 400
+        file.stream.seek(0)
+    except Exception:
+        return "Corrupted or unsupported image file", 400
+
+    file.save(save_path)
     return "OK"
+
 
 @app.route("/preview_qr", methods=["POST"])
 def preview_qr():
@@ -104,25 +265,56 @@ def preview_qr():
     fill_color = request.form.get("fill_color", "#000")
     back_color = request.form.get("back_color", "#fff")
     transparent = bool(request.form.get("transparent"))
-    logo_name = request.form.get("logo")
+    ecc = (request.form.get("ecc") or "H").upper()
+    fill_style = (request.form.get("fill_style") or "solid").lower()
+    fill_color2 = request.form.get("fill_color2", "#000000")
+
+    # พรีวิวเป็น PNG เสมอ
+    try:
+        size_px = int(request.form.get("size_px") or "512")
+    except Exception:
+        size_px = 512
+
+    logo_name = secure_filename(request.form.get("logo") or "")
     logo_path = os.path.join(UPLOAD_FOLDER, logo_name) if logo_name else None
-    img = generate_qr_code(data, logo_path, fill_color, back_color, transparent)
+    if logo_path and not os.path.exists(logo_path):
+        logo_path = None
+
+    img = generate_qr_code_png(
+        data,
+        logo_path,
+        fill_color,
+        back_color,
+        transparent,
+        size_px=size_px,
+        ecc=ecc,
+        fill_style=fill_style,
+        fill_color2=fill_color2
+    )
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
     return send_file(buf, mimetype="image/png")
 
+
 @app.route('/delete_logo/<logo_name>', methods=['DELETE'])
 def delete_logo(logo_name):
-    logo_path = os.path.join('static', 'logo', logo_name)
+    fname = secure_filename(logo_name)
+    path = Path(UPLOAD_FOLDER) / fname
     try:
-        if os.path.exists(logo_path):
-            os.remove(logo_path)
+        if path.exists() and path.resolve().parent == Path(UPLOAD_FOLDER).resolve():
+            path.unlink()
             return jsonify({'success': True})
         else:
             return jsonify({'error': 'ไม่พบไฟล์'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ข้อความเมื่อไฟล์เกินกำหนด
+@app.errorhandler(413)
+def too_large(e):
+    return "File too large. Max 2MB.", 413
 
 
 if __name__ == "__main__":
