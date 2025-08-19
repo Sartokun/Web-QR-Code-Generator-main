@@ -5,7 +5,7 @@
 
 🔗 **Demo**: https://qr-generator-production-c5c2.up.railway.app/
 
-![Preview](static/docs/preview.png)
+![Preview](static/Docs/preview.png)
 ---
 
 ## ✨ ฟีเจอร์
