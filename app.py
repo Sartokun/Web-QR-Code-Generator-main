@@ -424,6 +424,183 @@ def resolve_short(code):
         abort(404)
     return redirect(item["url"], code=302)
 
+# ==== Admin config & helpers ===================================================
+import json
+import time
+from threading import Lock
+from datetime import datetime
+
+from flask import (
+    Flask, request, render_template, send_file, jsonify, url_for,
+    redirect, abort
+)
+from werkzeug.utils import secure_filename
+
+# ใช้ key ง่าย ๆ ก่อน (เปลี่ยนใน PROD): เข้าผ่าน /admin?key=YOUR_ADMIN_KEY
+ADMIN_KEY = os.getenv("ADMIN_KEY", "changeme")
+app.config.setdefault("PREFERRED_URL_SCHEME", "https")  # ให้ url_for สร้าง https ถ้ามี reverse proxy
+
+# short-link DB (ถ้ายังไม่มีจากขั้นก่อน ให้คงไว้ได้เลย)
+SHORT_DB_PATH = os.path.join("static", "shortlinks.json")
+os.makedirs(os.path.dirname(SHORT_DB_PATH), exist_ok=True)
+_SHORT_DB_LOCK = Lock()
+
+def _read_short_db():
+    if not os.path.exists(SHORT_DB_PATH):
+        return {}
+    try:
+        with open(SHORT_DB_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _write_short_db(db):
+    tmp = SHORT_DB_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False)
+    os.replace(tmp, SHORT_DB_PATH)
+
+def _human_bytes(n):
+    for unit in ["B","KB","MB","GB","TB"]:
+        if n < 1024 or unit == "TB":
+            return f"{n:.2f} {unit}" if unit != "B" else f"{n} B"
+        n /= 1024.0
+
+def _require_admin():
+    key = request.args.get("key") or request.headers.get("X-Admin-Key")
+    if key != ADMIN_KEY:
+        abort(403)
+
+def _file_rows():
+    """รวบรวมรายการไฟล์ทั้งหมดสำหรับหน้า admin"""
+    rows = []
+
+    # โลโก้
+    logo_dir = os.path.join("static", "logo")
+    os.makedirs(logo_dir, exist_ok=True)
+    for name in sorted(os.listdir(logo_dir)):
+        path = os.path.join(logo_dir, name)
+        if not os.path.isfile(path):
+            continue
+        st = os.stat(path)
+        rows.append({
+            "kind": "logo",
+            "atype": None,
+            "name": name,
+            "size": st.st_size,
+            "mtime": st.st_mtime,
+            "mtime_iso": datetime.fromtimestamp(st.st_mtime).isoformat(sep=" ", timespec="seconds"),
+            "url": url_for("static", filename=f"logo/{name}", _external=True),
+            "short": None,
+            "thumb": url_for("static", filename=f"logo/{name}", _external=False)  # ใช้เป็น thumbnail ได้
+        })
+
+    # ไฟล์ asset (pdf/mp3/image)
+    for atype, folder in ASSET_FOLDERS.items():
+        os.makedirs(folder, exist_ok=True)
+        for name in sorted(os.listdir(folder)):
+            path = os.path.join(folder, name)
+            if not os.path.isfile(path):
+                continue
+            st = os.stat(path)
+            long_url = url_for("static", filename=f"files/{atype}/{name}", _external=True)
+            rows.append({
+                "kind": "asset",
+                "atype": atype,
+                "name": name,
+                "size": st.st_size,
+                "mtime": st.st_mtime,
+                "mtime_iso": datetime.fromtimestamp(st.st_mtime).isoformat(sep=" ", timespec="seconds"),
+                "url": long_url,
+                "short": None,     # จะเติมด้านล่างจาก DB
+                "thumb": url_for("static", filename=f"files/{atype}/{name}", _external=False)
+                           if atype == "image" else None
+            })
+
+    # เติม short links ถ้ามี
+    db = _read_short_db()
+    url_to_short = {}
+    for code, item in db.items():
+        url_to_short[item.get("url")] = url_for("resolve_short", code=code, _external=True)
+    for r in rows:
+        r["short"] = url_to_short.get(r["url"])
+
+    # ใหม่สุดก่อน
+    rows.sort(key=lambda r: r["mtime"], reverse=True)
+    return rows
+
+# ==== Admin routes =============================================================
+@app.get("/admin")
+def admin_index():
+    _require_admin()
+    q = (request.args.get("q") or "").strip().lower()
+    rows = _file_rows()
+    if q:
+        rows = [r for r in rows if q in r["name"].lower() or (r["atype"] or "").lower().startswith(q)]
+    totals = {
+        "all": len(rows),
+        "logo": sum(1 for r in rows if r["kind"] == "logo"),
+        "pdf":  sum(1 for r in rows if r["atype"] == "pdf"),
+        "mp3":  sum(1 for r in rows if r["atype"] == "mp3"),
+        "image":sum(1 for r in rows if r["atype"] == "image"),
+        "size": _human_bytes(sum(r["size"] for r in rows)),
+    }
+    return render_template("admin.html", rows=rows, totals=totals, admin_key=ADMIN_KEY)
+
+@app.post("/admin/delete")
+def admin_delete():
+    _require_admin()
+    kind = request.form.get("kind")
+    name = request.form.get("name")
+    atype = request.form.get("atype")
+
+    if not name or kind not in ("logo", "asset"):
+        return jsonify(error="invalid params"), 400
+
+    if kind == "logo":
+        base_dir = os.path.join("static", "logo")
+        rel = f"logo/{name}"
+    else:
+        if atype not in ASSET_FOLDERS:
+            return jsonify(error="bad type"), 400
+        base_dir = ASSET_FOLDERS[atype]
+        rel = f"files/{atype}/{name}"
+
+    # ป้องกัน path traversal
+    path = os.path.abspath(os.path.join(base_dir, name))
+    if not path.startswith(os.path.abspath(base_dir)):
+        return jsonify(error="forbidden path"), 403
+
+    if not os.path.exists(path):
+        return jsonify(error="not found"), 404
+
+    os.remove(path)
+
+    # ล้าง short-link ที่ชี้มายังไฟล์นี้
+    long_url = url_for("static", filename=rel, _external=True)
+    with _SHORT_DB_LOCK:
+        db = _read_short_db()
+        dirty = False
+        for code, item in list(db.items()):
+            if item.get("url") == long_url:
+                del db[code]
+                dirty = True
+        if dirty:
+            _write_short_db(db)
+
+    return jsonify(success=True)
+
+@app.post("/admin/shorten")
+def admin_shorten():
+    _require_admin()
+    long_url = request.form.get("url")
+    if not long_url:
+        return jsonify(error="missing url"), 400
+
+    # สร้าง short code ใหม่ (ใช้ฟังก์ชัน create_short_link ที่คุณมีอยู่)
+    short_url = create_short_link(long_url)
+    return jsonify(success=True, short_url=short_url)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
