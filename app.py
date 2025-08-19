@@ -1,14 +1,13 @@
-from flask import Flask, render_template, request, send_file, jsonify, url_for
+from flask import Flask, render_template, request, send_file, jsonify, url_for, redirect, abort
 from io import BytesIO
-import os, math
+import os, math, time, json, secrets
 from qrcode import QRCode, constants
 from qrcode.image.svg import SvgPathImage  # สำหรับ SVG
 from PIL import Image, ImageDraw, ImageColor
 import numpy as np
 from werkzeug.utils import secure_filename
 from pathlib import Path
-import time
-from werkzeug.utils import secure_filename
+from threading import Lock
 
 app = Flask(__name__)
 
@@ -19,6 +18,12 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
 app.config["PREFERRED_URL_SCHEME"] = "https"
 ALLOWED_EXT = {"png", "jpg", "jpeg"}
+
+# ไฟล์เก็บ mapping ลิ้งก์สั้น -> URL ยาว
+SHORT_DB_PATH = os.path.join("static", "shortlinks.json")
+os.makedirs(os.path.dirname(SHORT_DB_PATH), exist_ok=True)
+_SHORT_DB_LOCK = Lock()
+_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 # --- เพิ่ม helper สำหรับเลือกระดับ Error Correction ---
 ECC_MAP = {
@@ -295,9 +300,10 @@ def upload_asset(atype):
     f.save(save_path)
 
     # ส่งกลับเป็น "ลิงก์แบบ absolute" ใช้งานได้ทันทีใน QR
-    url = url_for("static", filename=f"files/{atype}/{final_name}", _external=True)
-
-    return jsonify(success=True, url=url, filename=final_name, size=size)
+    long_url = url_for("static", filename=f"files/{atype}/{final_name}", _external=True)
+    short_url = create_short_link(long_url)
+    return jsonify(success=True, url=long_url, short_url=short_url,
+               filename=final_name, size=size)
 
 
 @app.route("/upload_logo", methods=["POST"])
@@ -380,6 +386,43 @@ def delete_logo(logo_name):
 @app.errorhandler(413)
 def too_large(e):
     return "File too large. Max 2MB.", 413
+
+def _read_short_db():
+    if not os.path.exists(SHORT_DB_PATH):
+        return {}
+    try:
+        with open(SHORT_DB_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _write_short_db(db):
+    tmp = SHORT_DB_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False)
+    os.replace(tmp, SHORT_DB_PATH)
+
+def _gen_code(n=6):
+    return "".join(secrets.choice(_ALPHABET) for _ in range(n))
+
+def create_short_link(long_url):
+    """สร้างโค้ดสั้นและบันทึกลงไฟล์, คืน url สั้นแบบ absolute"""
+    with _SHORT_DB_LOCK:
+        db = _read_short_db()
+        code = _gen_code(6)
+        while code in db:
+            code = _gen_code(6)
+        db[code] = {"url": long_url, "ts": int(time.time())}
+        _write_short_db(db)
+    return url_for("resolve_short", code=code, _external=True)
+
+@app.get("/s/<code>")
+def resolve_short(code):
+    db = _read_short_db()
+    item = db.get(code)
+    if not item:
+        abort(404)
+    return redirect(item["url"], code=302)
 
 
 if __name__ == "__main__":

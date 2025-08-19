@@ -164,8 +164,9 @@ function uploadAsset(type) {
       if (!resp.ok) throw new Error(data?.error || "อัปโหลดไม่สำเร็จ");
       // ตั้ง URL ให้ input ของประเภทนั้น ๆ
       const urlInput = document.getElementById(cfg.urlInputId);
+      const finalUrl = data.short_url || data.url;
       if (urlInput) {
-        urlInput.value = data.url || "";
+        urlInput.value = finalUrl || "";
       }
       // อัปเดตตัวอย่าง/พรีวิว
       updateDataPreviewOnly();
