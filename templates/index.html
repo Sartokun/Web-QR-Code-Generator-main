@@ -52,9 +52,9 @@
                                 <option value="wifi">Wi-Fi (SSID/Password)</option>
                                 <option value="email">Email</option>
                                 <option value="sms">SMS</option>
-                                <option value="pdf">PDF (ลิงก์)</option>
-                                <option value="mp3">MP3 (ลิงก์)</option>
-                                <option value="image">รูปภาพ (ลิงก์)</option>
+                                <option value="pdf">PDF (ลิงก์/ไฟล์)</option>
+                                <option value="mp3">MP3 (ลิงก์)/ไฟล์</option>
+                                <option value="image">รูปภาพ (ลิงก์/ไฟล์)</option>
                             </select>
                         </div>
 
@@ -135,19 +135,62 @@
                                 </div>
                             </div>
 
-                            <!-- PDF / MP3 / Image -->
+                            <!-- PDF -->
                             <div class="dt-group" data-type="pdf" style="display:none">
                                 <label class="form-label">ลิงก์ไฟล์ PDF</label>
                                 <input id="dt_pdf" type="url" class="form-control" placeholder="https://.../file.pdf">
+
+                                <!-- DROPZONE -->
+                                <div class="asset-dropzone" id="assetDrop_pdf">
+                                    <div class="logo-controls mt-2">
+                                        <label for="assetFileInput_pdf" class="btn btn-file">เลือกไฟล์</label>
+                                        <span id="assetFileName_pdf" class="file-pill upload-filename">
+                                            ลากไฟล์มาวางที่นี่ หรือกด “เลือกไฟล์”
+                                        </span>
+                                        <button type="button" id="uploadAssetBtn_pdf" class="btn btn-upload" disabled
+                                            onclick="uploadAsset('pdf')">อัปโหลด</button>
+                                    </div>
+                                </div>
+                                <input id="assetFileInput_pdf" class="hidden-file-input" type="file" accept=".pdf">
                             </div>
+
+                            <!-- MP3 -->
                             <div class="dt-group" data-type="mp3" style="display:none">
                                 <label class="form-label">ลิงก์ไฟล์ MP3</label>
                                 <input id="dt_mp3" type="url" class="form-control" placeholder="https://.../audio.mp3">
+
+                                <div class="asset-dropzone" id="assetDrop_mp3">
+                                    <div class="logo-controls mt-2">
+                                        <label for="assetFileInput_mp3" class="btn btn-file">เลือกไฟล์</label>
+                                        <span id="assetFileName_mp3" class="file-pill upload-filename">
+                                            ลากไฟล์มาวางที่นี่ หรือกด “เลือกไฟล์”
+                                        </span>
+                                        <button type="button" id="uploadAssetBtn_mp3" class="btn btn-upload" disabled
+                                            onclick="uploadAsset('mp3')">อัปโหลด</button>
+                                    </div>
+                                </div>
+                                <input id="assetFileInput_mp3" class="hidden-file-input" type="file"
+                                    accept=".mp3,audio/mpeg">
                             </div>
+
+                            <!-- Image -->
                             <div class="dt-group" data-type="image" style="display:none">
                                 <label class="form-label">ลิงก์รูปภาพ</label>
                                 <input id="dt_image" type="url" class="form-control"
                                     placeholder="https://.../image.jpg">
+
+                                <div class="asset-dropzone" id="assetDrop_image">
+                                    <div class="logo-controls mt-2">
+                                        <label for="assetFileInput_image" class="btn btn-file">เลือกไฟล์</label>
+                                        <span id="assetFileName_image" class="file-pill upload-filename">
+                                            ลากไฟล์มาวางที่นี่ หรือกด “เลือกไฟล์”
+                                        </span>
+                                        <button type="button" id="uploadAssetBtn_image" class="btn btn-upload" disabled
+                                            onclick="uploadAsset('image')">อัปโหลด</button>
+                                    </div>
+                                </div>
+                                <input id="assetFileInput_image" class="hidden-file-input" type="file"
+                                    accept=".png,.jpg,.jpeg,image/png,image/jpeg">
                             </div>
                         </div>
 
@@ -287,7 +330,7 @@
     </div>
 
     <div class="qr-footer-credit">
-        สร้างโดย <strong>Sarto_🌸</strong> | V 2.0
+        สร้างโดย <strong>Sarto_🌸</strong> | V 2.1
     </div>
 </body>
 

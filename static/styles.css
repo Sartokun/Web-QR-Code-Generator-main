@@ -331,3 +331,20 @@ details.adv[open]>summary::after{ transform: rotate(180deg) }
   border-color: rgba(255,255,255,.2);
   background: rgba(255,255,255,.04);
 }
+
+.hidden-file-input{ display:none }   /* ซ่อน input file จริง ใช้ <label> เป็นปุ่มแทน */
+
+/* ===== Asset dropzone (PDF / MP3 / Image) – spacing สบายตา ===== */
+.asset-dropzone{
+  margin-top: 10px;                 /* เว้นจากช่อง URL ด้านบน */
+  padding: 14px 16px;               /* เว้นขอบด้านในให้กว้างขึ้น */
+  border: 1px dashed rgba(255,255,255,.22);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+
+.asset-dropzone .file-pill{
+  padding: .7rem .95rem;            /* เพิ่มช่องไฟในกล่องข้อความ */
+  line-height: 1.5;                 /* บรรทัดโปร่งขึ้น อ่านง่าย */
+  border-radius: 12px;
+}

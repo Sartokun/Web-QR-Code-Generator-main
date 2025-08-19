@@ -21,6 +21,173 @@ Coloris({
 const PREVIEW_DEBOUNCE_MS = 150; // ปรับได้ 150–300ms
 const ONE_MB = 1024 * 1024;
 
+function bindAssetDnD(type) {
+  const drop = document.getElementById(`assetDrop_${type}`);
+  const cfg = ASSET_CFG[type];
+  if (!drop || !cfg) return;
+
+  const input = document.getElementById(cfg.inputId);
+
+  const enter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    drop.classList.add("drag-over");
+  };
+  const leave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    drop.classList.remove("drag-over");
+  };
+
+  drop.addEventListener("dragenter", enter);
+  drop.addEventListener("dragover", enter);
+  drop.addEventListener("dragleave", leave);
+  drop.addEventListener("dragend", leave);
+
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    drop.classList.remove("drag-over");
+
+    const files = e.dataTransfer?.files || [];
+    if (!files.length) return;
+    const f = files[0];
+
+    // ใส่ไฟล์ลง <input type=file> เพื่อให้ใช้ลอจิกเดิม
+    const dt = new DataTransfer();
+    dt.items.add(f);
+    if (input) input.files = dt.files;
+
+    // แสดงรายละเอียดและเปิดปุ่มอัปโหลด (ไม่อัปโหลดอัตโนมัติ)
+    handleAssetFileChange(type);
+  });
+}
+
+// ===== Assets (pdf/mp3/image) =====
+const ASSET_CFG = {
+  pdf: {
+    inputId: "assetFileInput_pdf",
+    pillId: "assetFileName_pdf",
+    btnId: "uploadAssetBtn_pdf",
+    urlInputId: "dt_pdf",
+    maxMB: 10,
+    accept: ["application/pdf", ".pdf"],
+  },
+  mp3: {
+    inputId: "assetFileInput_mp3",
+    pillId: "assetFileName_mp3",
+    btnId: "uploadAssetBtn_mp3",
+    urlInputId: "dt_mp3",
+    maxMB: 15,
+    accept: ["audio/mpeg", ".mp3"],
+  },
+  image: {
+    inputId: "assetFileInput_image",
+    pillId: "assetFileName_image",
+    btnId: "uploadAssetBtn_image",
+    urlInputId: "dt_image",
+    maxMB: 5,
+    accept: ["image/png", "image/jpeg", ".png", ".jpg", ".jpeg"],
+  },
+};
+
+function enableAssetBtn(type, enabled) {
+  const btn = document.getElementById(ASSET_CFG[type].btnId);
+  if (btn) btn.disabled = !enabled;
+}
+function setAssetPill(type, text, status) {
+  // status: '', 'ok', 'warn'
+  const pill = document.getElementById(ASSET_CFG[type].pillId);
+  if (!pill) return;
+  pill.textContent = text;
+  pill.title = text;
+  pill.classList.remove("ok", "warn");
+  if (status) pill.classList.add(status);
+}
+function humanMB(bytes) {
+  return (bytes / 1024 / 1024).toFixed(2) + " MB";
+}
+
+function handleAssetFileChange(type) {
+  const cfg = ASSET_CFG[type];
+  const input = document.getElementById(cfg.inputId);
+  if (!input || !input.files.length) {
+    setAssetPill(type, "ยังไม่ได้เลือกไฟล์");
+    enableAssetBtn(type, false);
+    return;
+  }
+  const f = input.files[0];
+
+  // ตรวจชนิด/ขนาดหยาบๆ
+  const okType = cfg.accept.some(
+    (t) => f.type === t || f.name.toLowerCase().endsWith(t)
+  );
+  if (!okType) {
+    setAssetPill(type, `ชนิดไฟล์ไม่รองรับ: ${f.name}`, "warn");
+    enableAssetBtn(type, false);
+    return;
+  }
+  const tooBig = f.size > cfg.maxMB * 1024 * 1024;
+  setAssetPill(
+    type,
+    `ไฟล์: ${f.name} — ${formatBytes(f.size)} (จำกัด ~${cfg.maxMB} MB)`,
+    tooBig ? "warn" : "ok"
+  );
+  enableAssetBtn(type, !tooBig);
+}
+
+function uploadAsset(type) {
+  const cfg = ASSET_CFG[type];
+  const input = document.getElementById(cfg.inputId);
+  if (!input || !input.files.length) {
+    alert("เลือกไฟล์ก่อน");
+    return;
+  }
+  const f = input.files[0];
+
+  const fd = new FormData();
+  fd.append("file", f);
+
+  const btn = document.getElementById(cfg.btnId);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "กำลังอัปโหลด...";
+  }
+
+  fetch(`/upload_asset/${encodeURIComponent(type)}`, {
+    method: "POST",
+    body: fd,
+  })
+    .then(async (resp) => {
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || "อัปโหลดไม่สำเร็จ");
+      // ตั้ง URL ให้ input ของประเภทนั้น ๆ
+      const urlInput = document.getElementById(cfg.urlInputId);
+      if (urlInput) {
+        urlInput.value = data.url || "";
+      }
+      // อัปเดตตัวอย่าง/พรีวิว
+      updateDataPreviewOnly();
+      debouncedUpdatePreview();
+      setAssetPill(
+        type,
+        `อัปโหลดแล้ว: ${data.filename} — ${formatBytes(data.size || 0)}`,
+        "ok"
+      );
+    })
+    .catch((err) => {
+      alert("อัปโหลดล้มเหลว: " + err.message);
+      enableAssetBtn(type, true);
+    })
+    .finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "อัปโหลด";
+      }
+    });
+}
+
 function updateUploadButtonState(hasFile) {
   const btn = document.getElementById("uploadLogoBtn");
   if (!btn) return;
@@ -275,6 +442,16 @@ function showUploadFileName() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  // ===== bind asset file change =====
+  ["pdf", "mp3", "image"].forEach((type) => {
+    const cfg = ASSET_CFG[type];
+    const input = document.getElementById(cfg.inputId);
+    if (input) {
+      input.addEventListener("change", () => handleAssetFileChange(type));
+    }
+    bindAssetDnD(type);
+  });
+
   // สลับฟิลด์ตามประเภท + อัปเดตพรีวิว
   const typeSel = document.getElementById("data_type");
   typeSel.addEventListener("change", () => {

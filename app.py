@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, url_for
 from io import BytesIO
 import os, math
 from qrcode import QRCode, constants
@@ -7,6 +7,8 @@ from PIL import Image, ImageDraw, ImageColor
 import numpy as np
 from werkzeug.utils import secure_filename
 from pathlib import Path
+import time
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -15,6 +17,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # จำกัดขนาดไฟล์สูงสุด 2MB
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
+app.config["PREFERRED_URL_SCHEME"] = "https"
 ALLOWED_EXT = {"png", "jpg", "jpeg"}
 
 # --- เพิ่ม helper สำหรับเลือกระดับ Error Correction ---
@@ -233,6 +236,68 @@ def index():
         return send_file(buf, mimetype="image/png", as_attachment=True, download_name="qr_code.png")
 
     return render_template("index.html", logos=logos)
+
+# ===== อัปโหลดไฟล์ asset (pdf/mp3/image) =====
+ASSET_FOLDERS = {
+    "pdf":   os.path.join("static", "files", "pdf"),
+    "mp3":   os.path.join("static", "files", "mp3"),
+    "image": os.path.join("static", "files", "image"),
+}
+ASSET_EXTS = {
+    "pdf":   {"pdf"},
+    "mp3":   {"mp3"},
+    "image": {"png", "jpg", "jpeg"},
+}
+ASSET_MAX_MB = {"pdf": 10, "mp3": 15, "image": 5}
+
+for _p in ASSET_FOLDERS.values():
+    os.makedirs(_p, exist_ok=True)
+
+def _allowed_asset(atype, filename):
+    ext = os.path.splitext(filename)[1].lower().lstrip(".")
+    return ext in ASSET_EXTS.get(atype, set())
+
+@app.post("/upload_asset/<atype>")
+def upload_asset(atype):
+    atype = (atype or "").lower()
+    if atype not in ASSET_FOLDERS:
+        return jsonify(error="unsupported asset type"), 400
+
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="no file"), 400
+
+    # ตรวจนามสกุล
+    base = secure_filename(f.filename)
+    stem, ext = os.path.splitext(base)
+    ext_l = ext.lower().lstrip(".")
+    if ext_l not in ASSET_EXTS.get(atype, set()):
+        return jsonify(error="invalid extension"), 400
+
+    # ตรวจขนาดไฟล์
+    f.stream.seek(0, os.SEEK_END)
+    size = f.stream.tell()
+    f.stream.seek(0)
+    max_bytes = ASSET_MAX_MB[atype] * 1024 * 1024
+    if size > max_bytes:
+        return jsonify(error=f"file too large (>{ASSET_MAX_MB[atype]} MB)"), 400
+
+    # ตั้งชื่อไฟล์แบบปลอดภัย + กันเคสชื่อว่าง/เป็นแค่เครื่องหมาย
+    safe_stem = (stem or "").strip("-_.")
+    if not safe_stem:
+        safe_stem = "file"
+    final_name = f"{safe_stem}_{int(time.time())}.{ext_l}"
+
+    # เซฟ
+    save_dir = ASSET_FOLDERS[atype]
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, final_name)
+    f.save(save_path)
+
+    # ส่งกลับเป็น "ลิงก์แบบ absolute" ใช้งานได้ทันทีใน QR
+    url = url_for("static", filename=f"files/{atype}/{final_name}", _external=True)
+
+    return jsonify(success=True, url=url, filename=final_name, size=size)
 
 
 @app.route("/upload_logo", methods=["POST"])
