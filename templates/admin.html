@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="th">
+
 <head>
   <meta charset="utf-8">
   <title>Admin · Files</title>
@@ -10,286 +11,546 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    :root{
-      --bg:#0f1116; --panel:#171a21; --border:rgba(255,255,255,.10);
-      --muted:#a9b3c6; --accent:#fb87b0; --accent-2:#ec407a;
-      --chip:#202532;
+    :root {
+      --bg: #0f1116;
+      --panel: #171a21;
+      --border: rgba(255, 255, 255, .10);
+      --muted: #a9b3c6;
+      --accent: #fb87b0;
+      --accent-2: #ec407a;
+      --chip: #202532;
     }
-    body{
+
+    /* ===== BG: ทำเป็น vignette แบบ fixed กันซ้ำ/เป็นแถบ ===== */
+    body {
+      background: #0f1116;
+      /* พื้นทึบก่อน */
+      color: #e9eef5;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -20%;
+      /* เผื่อขอบเพื่อกัน seam เมื่อเลื่อน */
+      z-index: -1;
+      pointer-events: none;
+      /* vignette นุ่ม ๆ 3 ชั้น ไม่เกิดการซ้ำตามความสูง */
       background:
-        radial-gradient(1200px 700px at 90% -10%, rgba(251,135,176,.13), transparent 70%),
-        radial-gradient(900px 700px at -10% 100%, rgba(236,64,122,.08), transparent 70%),
-        var(--bg);
-      color:#e9eef5;
+        radial-gradient(60% 50% at 85% 0%, rgba(251, 135, 176, .14), transparent 60%),
+        radial-gradient(65% 55% at 0% 100%, rgba(236, 64, 122, .10), transparent 65%),
+        radial-gradient(120% 100% at 50% 50%, rgba(255, 255, 255, .03), transparent 70%);
+      filter: saturate(105%);
     }
-    .toolbar{ position:sticky; top:10px; z-index:5; }
-    .card-panel{
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid var(--border); border-radius:16px;
+
+    .toolbar {
+      position: sticky;
+      top: 10px;
+      z-index: 5;
     }
-    .search{ background:#1b1f26; border:1px solid var(--border); color:#fff; border-radius:12px; padding:.7rem 1rem; }
-    .filters .btn{ border:1px solid var(--border); color:#e9eef5; }
-    .filters .btn.active{ background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-color:transparent; }
-    .sort-select{ background:#1b1f26; border:1px solid var(--border); color:#fff; border-radius:10px; }
+
+    .card-panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    /* ===== ช่องค้นหา: สีตัวอักษร/placeholder ชัดเจน ===== */
+    .search {
+      background: #1b1f26;
+      border: 1px solid rgba(255, 255, 255, .12);
+      color: #fff;
+      /* สีตัวอักษรขณะพิมพ์ */
+      caret-color: #fff;
+      /* สีเคอร์เซอร์ */
+      border-radius: 12px;
+      padding: .7rem 1rem;
+    }
+
+    .search:focus {
+      outline: none;
+      border-color: rgba(251, 135, 176, .6);
+      box-shadow: 0 0 0 3px rgba(251, 135, 176, .25);
+    }
+
+    /* placeholder ทุกเบราว์เซอร์ */
+    .search::placeholder {
+      color: #b7c1d6;
+      opacity: 1;
+    }
+
+    .search::-webkit-input-placeholder {
+      color: #b7c1d6;
+    }
+
+    .search:-ms-input-placeholder {
+      color: #b7c1d6;
+    }
+
+    .search::-ms-input-placeholder {
+      color: #b7c1d6;
+    }
+
+    /* Safari/Chrome autofill ให้ตัวอักษรอ่านออก */
+    .search:-webkit-autofill {
+      -webkit-text-fill-color: #fff;
+      transition: background-color 9999s ease-out;
+    }
+
+    .filters .btn {
+      border: 1px solid var(--border);
+      color: #e9eef5;
+    }
+
+    .filters .btn.active {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-color: transparent;
+    }
+
+    .sort-select {
+      background: #1b1f26;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 10px;
+    }
+
     /* list */
-    .file-list{ list-style:none; padding:0; margin:0; }
-    .file-item{
-      display:grid; grid-template-columns: 56px 1fr auto; gap:16px;
-      padding:14px 16px; align-items:center; border-bottom:1px solid rgba(255,255,255,.06);
+    .file-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
     }
-    .file-item:last-child{ border-bottom:none; }
-    .thumb{
-      width:48px;height:48px;border-radius:12px;object-fit:cover;background:#0e1013;
-      display:flex;align-items:center;justify-content:center;font-weight:700;color:#8892a6;
+
+    .file-item {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 16px;
+      padding: 14px 16px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
     }
-    .name{ font-weight:800; word-break:break-word; }
-    .meta{ color:var(--muted); font-size:.92rem; }
-    .chips{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
-    .chip{ background:var(--chip); border:1px solid var(--border); border-radius:999px; padding:.25rem .6rem; font-size:.85rem; color:#cdd6e6 }
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .btn-soft{ border:1px solid var(--border); background:#1b1f26; color:#e9eef5; border-radius:10px; }
-    .btn-grad{ background:linear-gradient(90deg,var(--accent),var(--accent-2)); border:none; color:#fff; border-radius:10px; }
-    .small-link{ color:#8dd0ff; text-decoration:none; }
-    .small-link:hover{ text-decoration:underline; }
-    .section-title{ font-size:1.75rem; font-weight:900; }
-    .muted{ color:var(--muted); }
-    @media (max-width: 768px){
-      .file-item{ grid-template-columns: 48px 1fr; }
-      .actions{ grid-column:1 / -1 }
+
+    .file-item:last-child {
+      border-bottom: none;
     }
+
+    .thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #0e1013;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #8892a6;
+    }
+
+    .name {
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .chip {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .25rem .6rem;
+      font-size: .85rem;
+      color: #cdd6e6
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn-soft {
+      border: 1px solid var(--border);
+      background: #1b1f26;
+      color: #e9eef5;
+      border-radius: 10px;
+    }
+
+    .btn-grad {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #fff;
+      border-radius: 10px;
+    }
+
+    .small-link {
+      color: #8dd0ff;
+      text-decoration: none;
+    }
+
+    .small-link:hover {
+      text-decoration: underline;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 900;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      .file-item {
+        grid-template-columns: 48px 1fr;
+      }
+
+      .actions {
+        grid-column: 1 / -1
+      }
+    }
+
+    /* ==== Multi-select mode ==== */
+    .thumb-wrap {
+      position: relative;
+    }
+
+    .selbox {
+      position: absolute;
+      left: -8px;
+      top: -8px;
+      display: none;
+      transform: scale(1.05);
+    }
+
+    .select-mode .selbox {
+      display: block;
+    }
+
+    /* โชว์ checkbox ตอนเข้าสู่โหมดเลือก */
+    .bulkbar {
+      position: sticky;
+      bottom: 12px;
+      z-index: 20;
+    }
+
+    .bulkbar .card-panel {
+      backdrop-filter: blur(6px);
+    }
+
+    #toggleSelect.btn-grad {
+      color: #fff;
+    }
+
+    /* ไฮไลต์ปุ่มเมื่อเปิดโหมดเลือก */
   </style>
 </head>
+
 <body class="py-3">
 
-<div class="container-xxl">
+  <div class="container-xxl">
 
-  <!-- Header -->
-  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-    <div>
-      <div class="section-title">ไฟล์ทั้งหมด</div>
-      <div class="small muted">
-        รวม: <span id="stat-all">{{ totals.all }}</span> ไฟล์ · ขนาดรวม {{ totals.size }}
-        | โลโก้ <span id="stat-logo">{{ totals.logo }}</span>
-        · PDF <span id="stat-pdf">{{ totals.pdf }}</span>
-        · MP3 <span id="stat-mp3">{{ totals.mp3 }}</span>
-        · รูป <span id="stat-image">{{ totals.image }}</span>
+    <!-- Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <div>
+        <div class="section-title">ไฟล์ทั้งหมด</div>
+        <div class="small muted">
+          รวม: <span id="stat-all">{{ totals.all }}</span> ไฟล์ · ขนาดรวม {{ totals.size }}
+          | โลโก้ <span id="stat-logo">{{ totals.logo }}</span>
+          · PDF <span id="stat-pdf">{{ totals.pdf }}</span>
+          · MP3 <span id="stat-mp3">{{ totals.mp3 }}</span>
+          · รูป <span id="stat-image">{{ totals.image }}</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar card-panel mb-3">
-    <div class="p-3">
-      <div class="row g-3 align-items-center">
-        <div class="col-12 col-lg-5">
-          <input id="q" class="form-control search" type="search" placeholder="ค้นหาชื่อไฟล์…">
-        </div>
-        <div class="col-12 col-lg-5">
-          <div class="btn-group filters" role="group" aria-label="filter">
-            <button data-type="all"   class="btn btn-sm btn-dark active">ทั้งหมด</button>
-            <button data-type="logo"  class="btn btn-sm btn-dark">โลโก้</button>
-            <button data-type="pdf"   class="btn btn-sm btn-dark">PDF</button>
-            <button data-type="mp3"   class="btn btn-sm btn-dark">MP3</button>
-            <button data-type="image" class="btn btn-sm btn-dark">รูปภาพ</button>
+    <!-- Toolbar -->
+    <div class="toolbar card-panel mb-3">
+      <div class="p-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-lg-5">
+            <input id="q" class="form-control search" type="search" placeholder="ค้นหาชื่อไฟล์…">
+          </div>
+          <div class="col-12 col-lg-5">
+            <div class="btn-group filters" role="group" aria-label="filter">
+              <button data-type="all" class="btn btn-sm btn-dark active">ทั้งหมด</button>
+              <button data-type="logo" class="btn btn-sm btn-dark">โลโก้</button>
+              <button data-type="pdf" class="btn btn-sm btn-dark">PDF</button>
+              <button data-type="mp3" class="btn btn-sm btn-dark">MP3</button>
+              <button data-type="image" class="btn btn-sm btn-dark">รูปภาพ</button>
+            </div>
+          </div>
+          <div class="col-12 col-lg-2">
+            <select id="sort" class="form-select form-select-sm sort-select">
+              <option value="mtime_desc">ล่าสุด → เก่า</option>
+              <option value="mtime_asc">เก่า → ใหม่</option>
+              <option value="name_asc">ชื่อ A → Z</option>
+              <option value="name_desc">ชื่อ Z → A</option>
+              <option value="size_desc">ขนาดมาก → น้อย</option>
+              <option value="size_asc">ขนาดน้อย → มาก</option>
+            </select>
+          </div>
+          <div class="col-12 col-lg-auto text-lg-end">
+            <button id="toggleSelect" class="btn btn-sm btn-outline-light">
+              <i class="bi bi-check2-square me-1"></i> เลือกหลายไฟล์
+            </button>
           </div>
         </div>
-        <div class="col-12 col-lg-2">
-          <select id="sort" class="form-select form-select-sm sort-select">
-            <option value="mtime_desc">ล่าสุด → เก่า</option>
-            <option value="mtime_asc">เก่า → ใหม่</option>
-            <option value="name_asc">ชื่อ A → Z</option>
-            <option value="name_desc">ชื่อ Z → A</option>
-            <option value="size_desc">ขนาดมาก → น้อย</option>
-            <option value="size_asc">ขนาดน้อย → มาก</option>
-          </select>
-        </div>
       </div>
     </div>
-  </div>
 
-  <!-- List -->
-  <div class="card-panel">
-    <ul class="file-list" id="fileList">
-      {% for r in rows %}
-      <li class="file-item"
-          data-kind="{{ r.kind }}" data-atype="{{ r.atype or '' }}"
-          data-name="{{ r.name }}" data-size="{{ r.size }}" data-mtime="{{ r.mtime }}">
-        <!-- thumb -->
-        <div>
-          {% if r.thumb and (r.atype == 'image' or r.kind == 'logo') %}
+    <!-- List -->
+    <div class="card-panel">
+      <ul class="file-list" id="fileList">
+        {% for r in rows %}
+        <li class="file-item" data-kind="{{ r.kind }}" data-atype="{{ r.atype or '' }}" data-name="{{ r.name }}"
+          data-size="{{ r.size }}" data-mtime="{{ r.mtime }}">
+          <!-- thumb -->
+          <div class="thumb-wrap">
+            <input type="checkbox" class="form-check-input selbox rowcheck">
+            {% if r.thumb and (r.atype == 'image' or r.kind == 'logo') %}
             <img class="thumb" src="{{ r.thumb }}" alt="thumb">
-          {% else %}
+            {% else %}
             <div class="thumb">–</div>
-          {% endif %}
-        </div>
-
-        <!-- info -->
-        <div>
-          <div class="name">{{ r.name }}</div>
-          <div class="meta">
-            {{ (r.size/1024/1024)|round(2) }} MB
-            <span class="mx-1">•</span>
-            <span class="time" data-ts="{{ r.mtime }}">{{ r.mtime_iso }}</span>
-            <span class="mx-1">•</span>
-            ประเภท: <span class="text-uppercase">{{ r.kind if r.kind!='asset' else r.atype }}</span>
+            {% endif %}
           </div>
-          <div class="chips">
-            {% if r.atype %}<span class="chip text-uppercase">{{ r.atype }}</span>{% endif %}
-            {% if r.kind == 'logo' %}<span class="chip">LOGO</span>{% endif %}
+
+          <!-- info -->
+          <div>
+            <div class="name">{{ r.name }}</div>
+            <div class="meta">
+              {{ (r.size/1024/1024)|round(2) }} MB
+              <span class="mx-1">•</span>
+              <span class="time" data-ts="{{ r.mtime }}">{{ r.mtime_iso }}</span>
+              <span class="mx-1">•</span>
+              ประเภท: <span class="text-uppercase">{{ r.kind if r.kind!='asset' else r.atype }}</span>
+            </div>
+            <div class="chips">
+              {% if r.atype %}<span class="chip text-uppercase">{{ r.atype }}</span>{% endif %}
+              {% if r.kind == 'logo' %}<span class="chip">LOGO</span>{% endif %}
+            </div>
           </div>
-        </div>
 
-        <!-- actions -->
-        <div class="actions">
-          <a class="btn btn-soft btn-sm" href="{{ r.url }}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> เปิด</a>
-          <button class="btn btn-soft btn-sm" data-copy="{{ r.url }}"><i class="bi bi-clipboard-check"></i> คัดลอก</button>
+          <!-- actions -->
+          <div class="actions">
+            <a class="btn btn-soft btn-sm" href="{{ r.url }}" target="_blank"><i class="bi bi-box-arrow-up-right"></i>
+              เปิด</a>
+            <button class="btn btn-soft btn-sm" data-copy="{{ r.url }}"><i class="bi bi-clipboard-check"></i>
+              คัดลอก</button>
 
-          {% if r.short %}
+            {% if r.short %}
             <a class="small-link" href="{{ r.short }}" target="_blank">{{ r.short }}</a>
             <button class="btn btn-soft btn-sm" data-copy="{{ r.short }}">คัดลอกสั้น</button>
-          {% else %}
+            {% else %}
             <button class="btn btn-outline-info btn-sm shorten-btn" data-url="{{ r.url }}">สร้างลิงก์สั้น</button>
-          {% endif %}
+            {% endif %}
 
-          <button class="btn btn-danger btn-sm del-btn"><i class="bi bi-trash"></i> ลบ</button>
-        </div>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-
-  <div class="text-center mt-4 small muted">
-    เข้าผ่าน key: <code>?key={{ admin_key }}</code>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
-  <div id="toast" class="toast align-items-center text-white bg-dark border-0" role="alert">
-    <div class="d-flex">
-      <div class="toast-body" id="toastBody">OK</div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            <button class="btn btn-danger btn-sm del-btn"><i class="bi bi-trash"></i> ลบ</button>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
     </div>
   </div>
-</div>
+  <div id="bulkBar" class="bulkbar d-none">
+    <div class="card-panel p-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div><strong id="selCount">0</strong> ไฟล์ที่เลือก</div>
+        <div class="d-flex gap-2">
+          <button id="selectAll" class="btn btn-soft btn-sm">เลือกทั้งหมด</button>
+          <button id="clearSel" class="btn btn-soft btn-sm">ยกเลิกการเลือก</button>
+          <button id="bulkDel" class="btn btn-danger btn-sm">
+            <i class="bi bi-trash"></i> ลบที่เลือก
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-const ADMIN_KEY = "{{ admin_key }}";
-const $  = (s, r=document)=>r.querySelector(s);
-const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+  <!-- Toast -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="toast" class="toast align-items-center text-white bg-dark border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody">OK</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
 
-/* Toast */
-const toast = new bootstrap.Toast($('#toast'));
-function showToast(m){ $('#toastBody').textContent = m; toast.show(); }
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const ADMIN_KEY = "{{ admin_key }}";
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
-/* เวลาไทย */
-function toThai(sec){
-  return new Intl.DateTimeFormat('th-TH',{dateStyle:'medium', timeStyle:'short', timeZone:'Asia/Bangkok'})
-         .format(new Date(sec*1000)) + ' (ICT)';
-}
+    /* Toast */
+    const toast = new bootstrap.Toast($('#toast'));
+    function showToast(m) { $('#toastBody').textContent = m; toast.show(); }
 
-/* ฟิลเตอร์ + เรียง */
-function applyFilters(){
-  const q = $('#q').value.trim().toLowerCase();
-  const type = $('.filters .btn.active')?.dataset.type || 'all';
-  const items = $$('#fileList .file-item');
-
-  let vis={all:0,logo:0,pdf:0,mp3:0,image:0};
-  items.forEach(it=>{
-    const name = it.dataset.name.toLowerCase();
-    const kind = it.dataset.kind;  // logo / asset
-    const atype = it.dataset.atype; // pdf/mp3/image/''
-    const matchQ = !q || name.includes(q);
-    const matchT = (type==='all') || (type==='logo'&&kind==='logo') || (type===atype);
-    const show = matchQ && matchT;
-    it.classList.toggle('d-none', !show);
-    if(show){
-      vis.all++; if(kind==='logo') vis.logo++; if(atype) vis[atype]=(vis[atype]||0)+1;
+    /* เวลาไทย */
+    function toThai(sec) {
+      return new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' })
+        .format(new Date(sec * 1000)) + ' (ICT)';
     }
-  });
-  // อัปเดตตัวเลขหัวข้อ
-  $('#stat-all').textContent   = vis.all;
-  $('#stat-logo').textContent  = vis.logo;
-  $('#stat-pdf').textContent   = vis.pdf||0;
-  $('#stat-mp3').textContent   = vis.mp3||0;
-  $('#stat-image').textContent = vis.image||0;
-}
-function sortList(){
-  const mode = $('#sort').value;
-  const ul = $('#fileList');
-  const items = $$('#fileList .file-item');
-  const key = {
-    mtime_desc: e=>-Number(e.dataset.mtime),
-    mtime_asc:  e=> Number(e.dataset.mtime),
-    name_asc:   e=> e.dataset.name.toLowerCase(),
-    name_desc:  e=> '\uffff'+e.dataset.name.toLowerCase(),
-    size_desc:  e=>-Number(e.dataset.size),
-    size_asc:   e=> Number(e.dataset.size),
-  }[mode];
-  items.sort((a,b)=> key(a)>key(b)?1:-1).forEach(li=>ul.appendChild(li));
-}
 
-/* ลบ / ย่อ / คัดลอก */
-function deleteItem(li){
-  const fd = new FormData();
-  fd.append('kind', li.dataset.kind);
-  fd.append('atype', li.dataset.atype || '');
-  fd.append('name', li.dataset.name);
-  return fetch('/admin/delete?key='+encodeURIComponent(ADMIN_KEY), { method:'POST', body:fd })
-    .then(r=>r.json()).then(d=>{
-      if(!d.success) throw new Error(d.error||'ลบไม่สำเร็จ');
-      li.remove(); showToast('ลบแล้ว');
-      applyFilters();
-    });
-}
-function shortenUrl(longUrl, btn){
-  btn.disabled = true; btn.textContent = 'กำลังสร้าง…';
-  const fd = new FormData(); fd.append('url', longUrl);
-  fetch('/admin/shorten?key='+encodeURIComponent(ADMIN_KEY), { method:'POST', body:fd })
-    .then(r=>r.json()).then(d=>{
-      if(!d.success) throw new Error(d.error||'fail');
-      showToast('สร้างลิงก์สั้นสำเร็จ');
-      location.reload();
-    }).catch(e=>{
-      showToast(e.message||'ผิดพลาด');
-      btn.disabled = false; btn.textContent = 'สร้างลิงก์สั้น';
-    });
-}
+    /* ฟิลเตอร์ + เรียง */
+    function applyFilters() {
+      const q = $('#q').value.trim().toLowerCase();
+      const type = $('.filters .btn.active')?.dataset.type || 'all';
+      const items = $$('#fileList .file-item');
 
-/* Ready */
-document.addEventListener('DOMContentLoaded', ()=>{
-  // เวลาไทย
-  $$('#fileList .time').forEach(t=>{
-    const sec = Number(t.dataset.ts||0);
-    if(sec>0) t.textContent = toThai(sec);
-  });
-
-  // ค้นหา/กรอง/เรียง
-  $('#q').addEventListener('input', applyFilters);
-  $$('.filters .btn').forEach(b=> b.addEventListener('click', ()=>{
-    $$('.filters .btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); applyFilters();
-  }));
-  $('#sort').addEventListener('change', sortList);
-
-  // ปุ่มคัดลอก/ย่อ/ลบ (event delegation)
-  document.body.addEventListener('click', e=>{
-    const copyBtn = e.target.closest('[data-copy]');
-    if(copyBtn){ navigator.clipboard.writeText(copyBtn.getAttribute('data-copy')).then(()=>showToast('คัดลอกแล้ว')); }
-
-    const sBtn = e.target.closest('.shorten-btn');
-    if(sBtn){ shortenUrl(sBtn.dataset.url, sBtn); }
-
-    const del = e.target.closest('.del-btn');
-    if(del){
-      const li = del.closest('.file-item');
-      if(confirm('ลบไฟล์นี้ถาวร?')) deleteItem(li);
+      let vis = { all: 0, logo: 0, pdf: 0, mp3: 0, image: 0 };
+      items.forEach(it => {
+        const name = it.dataset.name.toLowerCase();
+        const kind = it.dataset.kind;  // logo / asset
+        const atype = it.dataset.atype; // pdf/mp3/image/''
+        const matchQ = !q || name.includes(q);
+        const matchT = (type === 'all') || (type === 'logo' && kind === 'logo') || (type === atype);
+        const show = matchQ && matchT;
+        it.classList.toggle('d-none', !show);
+        if (show) {
+          vis.all++; if (kind === 'logo') vis.logo++; if (atype) vis[atype] = (vis[atype] || 0) + 1;
+        }
+      });
+      // อัปเดตตัวเลขหัวข้อ
+      $('#stat-all').textContent = vis.all;
+      $('#stat-logo').textContent = vis.logo;
+      $('#stat-pdf').textContent = vis.pdf || 0;
+      $('#stat-mp3').textContent = vis.mp3 || 0;
+      $('#stat-image').textContent = vis.image || 0;
     }
-  });
+    function sortList() {
+      const mode = $('#sort').value;
+      const ul = $('#fileList');
+      const items = $$('#fileList .file-item');
+      const key = {
+        mtime_desc: e => -Number(e.dataset.mtime),
+        mtime_asc: e => Number(e.dataset.mtime),
+        name_asc: e => e.dataset.name.toLowerCase(),
+        name_desc: e => '\uffff' + e.dataset.name.toLowerCase(),
+        size_desc: e => -Number(e.dataset.size),
+        size_asc: e => Number(e.dataset.size),
+      }[mode];
+      items.sort((a, b) => key(a) > key(b) ? 1 : -1).forEach(li => ul.appendChild(li));
+    }
 
-  sortList(); applyFilters();
-});
-</script>
+    /* ลบ / ย่อ / คัดลอก */
+    function deleteItem(li) {
+      const fd = new FormData();
+      fd.append('kind', li.dataset.kind);
+      fd.append('atype', li.dataset.atype || '');
+      fd.append('name', li.dataset.name);
+      return fetch('/admin/delete?key=' + encodeURIComponent(ADMIN_KEY), { method: 'POST', body: fd })
+        .then(r => r.json()).then(d => {
+          if (!d.success) throw new Error(d.error || 'ลบไม่สำเร็จ');
+          li.remove(); showToast('ลบแล้ว');
+          applyFilters();
+        });
+    }
+    function shortenUrl(longUrl, btn) {
+      btn.disabled = true; btn.textContent = 'กำลังสร้าง…';
+      const fd = new FormData(); fd.append('url', longUrl);
+      fetch('/admin/shorten?key=' + encodeURIComponent(ADMIN_KEY), { method: 'POST', body: fd })
+        .then(r => r.json()).then(d => {
+          if (!d.success) throw new Error(d.error || 'fail');
+          showToast('สร้างลิงก์สั้นสำเร็จ');
+          location.reload();
+        }).catch(e => {
+          showToast(e.message || 'ผิดพลาด');
+          btn.disabled = false; btn.textContent = 'สร้างลิงก์สั้น';
+        });
+    }
+    /* === Multi-select === */
+    function toggleSelectMode(forceOn) {
+      const on = forceOn ?? !document.body.classList.contains('select-mode');
+      document.body.classList.toggle('select-mode', on);
+      $('#bulkBar').classList.toggle('d-none', !on);
+      $('#toggleSelect').classList.toggle('btn-grad', on);
+      if (!on) { $$('.rowcheck').forEach(cb => cb.checked = false); updateSelCount(); }
+    }
+    function updateSelCount() { $('#selCount').textContent = $$('.rowcheck:checked').length; }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // ปุ่มเปิด/ปิดโหมด
+      $('#toggleSelect')?.addEventListener('click', () => toggleSelectMode());
+
+      // เช็ค/ยกเลิกเช็ค แล้วอัปเดตจำนวน
+      document.body.addEventListener('change', e => {
+        if (e.target.classList.contains('rowcheck')) updateSelCount();
+      });
+
+      // เลือกทั้งหมด (เฉพาะรายการที่มองเห็นหลังกรอง)
+      $('#selectAll')?.addEventListener('click', () => {
+        $$('#fileList .file-item:not(.d-none) .rowcheck').forEach(cb => cb.checked = true);
+        updateSelCount();
+      });
+
+      // เคลียร์การเลือก
+      $('#clearSel')?.addEventListener('click', () => {
+        $$('.rowcheck').forEach(cb => cb.checked = false);
+        updateSelCount();
+      });
+
+      // ลบหลายไฟล์
+      $('#bulkDel')?.addEventListener('click', () => {
+        const items = $$('.rowcheck:checked').map(cb => cb.closest('.file-item'));
+        if (items.length === 0) return;
+        if (!confirm(`ลบ ${items.length} รายการถาวร?`)) return;
+        Promise.allSettled(items.map(li => deleteItem(li))).then(() => {
+          showToast('ลบรายการที่เลือกแล้ว');
+          toggleSelectMode(false);
+          applyFilters();
+        });
+      });
+    });
+
+    /* Ready */
+    document.addEventListener('DOMContentLoaded', () => {
+      // เวลาไทย
+      $$('#fileList .time').forEach(t => {
+        const sec = Number(t.dataset.ts || 0);
+        if (sec > 0) t.textContent = toThai(sec);
+      });
+
+      // ค้นหา/กรอง/เรียง
+      $('#q').addEventListener('input', applyFilters);
+      $$('.filters .btn').forEach(b => b.addEventListener('click', () => {
+        $$('.filters .btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active'); applyFilters();
+      }));
+      $('#sort').addEventListener('change', sortList);
+
+      // ปุ่มคัดลอก/ย่อ/ลบ (event delegation)
+      document.body.addEventListener('click', e => {
+        const copyBtn = e.target.closest('[data-copy]');
+        if (copyBtn) { navigator.clipboard.writeText(copyBtn.getAttribute('data-copy')).then(() => showToast('คัดลอกแล้ว')); }
+
+        const sBtn = e.target.closest('.shorten-btn');
+        if (sBtn) { shortenUrl(sBtn.dataset.url, sBtn); }
+
+        const del = e.target.closest('.del-btn');
+        if (del) {
+          const li = del.closest('.file-item');
+          if (confirm('ลบไฟล์นี้ถาวร?')) deleteItem(li);
+        }
+      });
+
+      sortList(); applyFilters();
+    });
+  </script>
 </body>
+
 </html>
