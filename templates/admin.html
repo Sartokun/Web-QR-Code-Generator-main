@@ -256,6 +256,11 @@
     }
 
     /* ไฮไลต์ปุ่มเมื่อเปิดโหมดเลือก */
+    /* ซ่อนไอเท็มแบบแยกชั้น: filter / page */
+    .hidden-by-filter,
+    .hidden-by-page {
+      display: none !important;
+    }
   </style>
 </head>
 
@@ -307,6 +312,28 @@
             <button id="toggleSelect" class="btn btn-sm btn-outline-light">
               <i class="bi bi-check2-square me-1"></i> เลือกหลายไฟล์
             </button>
+          </div>
+          <!-- จำนวนต่อหน้า -->
+          <div class="col-6 col-lg-2">
+            <div class="d-flex align-items-center gap-2 justify-content-lg-end">
+              <span class="muted small">แสดง</span>
+              <select id="pageSize" class="form-select form-select-sm sort-select">
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <span class="muted small">รายการ</span>
+            </div>
+          </div>
+
+          <!-- ตัวนำทางหน้า -->
+          <div class="col-6 col-lg-3">
+            <div class="d-flex align-items-center gap-2 justify-content-lg-end">
+              <button id="prevPage" class="btn btn-soft btn-sm">ก่อนหน้า</button>
+              <span id="pageInfo" class="muted small">1 / 1</span>
+              <button id="nextPage" class="btn btn-soft btn-sm">ถัดไป</button>
+            </div>
           </div>
         </div>
       </div>
@@ -364,17 +391,16 @@
         {% endfor %}
       </ul>
     </div>
-  </div>
-  <div id="bulkBar" class="bulkbar d-none">
-    <div class="card-panel p-3">
-      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div><strong id="selCount">0</strong> ไฟล์ที่เลือก</div>
-        <div class="d-flex gap-2">
-          <button id="selectAll" class="btn btn-soft btn-sm">เลือกทั้งหมด</button>
-          <button id="clearSel" class="btn btn-soft btn-sm">ยกเลิกการเลือก</button>
-          <button id="bulkDel" class="btn btn-danger btn-sm">
-            <i class="bi bi-trash"></i> ลบที่เลือก
-          </button>
+    <!-- Bulk action bar -->
+    <div id="bulkBar" class="bulkbar d-none">
+      <div class="card-panel p-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div><strong id="selCount">0</strong> ไฟล์ที่เลือก</div>
+          <div class="d-flex gap-2">
+            <button id="selectAll" class="btn btn-soft btn-sm">เลือกทั้งหมด</button>
+            <button id="clearSel" class="btn btn-soft btn-sm">ยกเลิกการเลือก</button>
+            <button id="bulkDel" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i> ลบที่เลือก</button>
+          </div>
         </div>
       </div>
     </div>
@@ -396,6 +422,33 @@
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
+    let currentPage = 1;
+
+    function visibleItemsAfterFilter() {
+      return $$('#fileList .file-item').filter(li => !li.classList.contains('hidden-by-filter'));
+    }
+
+    function renderPage() {
+      const perPage = parseInt($('#pageSize')?.value || '10', 10);
+      const all = $$('#fileList .file-item');                     // ทั้งหมด
+      const vis = visibleItemsAfterFilter();                      // ที่ผ่านการกรอง
+      const pages = Math.max(1, Math.ceil(vis.length / perPage));
+      currentPage = Math.min(Math.max(1, currentPage), pages);
+
+      // ซ่อนแบบ 'by page' ทั้งหมดก่อน
+      all.forEach(li => li.classList.add('hidden-by-page'));
+
+      // แสดงเฉพาะช่วงของหน้าปัจจุบัน
+      const start = (currentPage - 1) * perPage;
+      vis.slice(start, start + perPage).forEach(li => li.classList.remove('hidden-by-page'));
+
+      // อัปเดตตัวควบคุม
+      $('#pageInfo').textContent = `${currentPage} / ${pages}`;
+      $('#prevPage').disabled = (currentPage <= 1);
+      $('#nextPage').disabled = (currentPage >= pages);
+    }
+
+
     /* Toast */
     const toast = new bootstrap.Toast($('#toast'));
     function showToast(m) { $('#toastBody').textContent = m; toast.show(); }
@@ -413,25 +466,34 @@
       const items = $$('#fileList .file-item');
 
       let vis = { all: 0, logo: 0, pdf: 0, mp3: 0, image: 0 };
+
       items.forEach(it => {
         const name = it.dataset.name.toLowerCase();
-        const kind = it.dataset.kind;  // logo / asset
-        const atype = it.dataset.atype; // pdf/mp3/image/''
+        const kind = it.dataset.kind;       // logo/asset
+        const atype = it.dataset.atype;     // pdf/mp3/image/''
         const matchQ = !q || name.includes(q);
         const matchT = (type === 'all') || (type === 'logo' && kind === 'logo') || (type === atype);
         const show = matchQ && matchT;
-        it.classList.toggle('d-none', !show);
+
+        it.classList.toggle('hidden-by-filter', !show);
+
         if (show) {
-          vis.all++; if (kind === 'logo') vis.logo++; if (atype) vis[atype] = (vis[atype] || 0) + 1;
+          vis.all++; if (kind === 'logo') vis.logo++;
+          if (atype) vis[atype] = (vis[atype] || 0) + 1;
         }
       });
+
       // อัปเดตตัวเลขหัวข้อ
       $('#stat-all').textContent = vis.all;
       $('#stat-logo').textContent = vis.logo;
       $('#stat-pdf').textContent = vis.pdf || 0;
       $('#stat-mp3').textContent = vis.mp3 || 0;
       $('#stat-image').textContent = vis.image || 0;
+
+      currentPage = 1;        // กลับหน้าแรกเมื่อมีการกรอง/ค้นหา
+      renderPage();
     }
+
     function sortList() {
       const mode = $('#sort').value;
       const ul = $('#fileList');
@@ -445,6 +507,8 @@
         size_asc: e => Number(e.dataset.size),
       }[mode];
       items.sort((a, b) => key(a) > key(b) ? 1 : -1).forEach(li => ul.appendChild(li));
+      currentPage = 1;
+      renderPage();
     }
 
     /* ลบ / ย่อ / คัดลอก */
@@ -519,6 +583,22 @@
 
     /* Ready */
     document.addEventListener('DOMContentLoaded', () => {
+      // ควบคุมแบ่งหน้า
+      $('#pageSize')?.addEventListener('change', () => { currentPage = 1; renderPage(); });
+      $('#prevPage')?.addEventListener('click', () => { currentPage--; renderPage(); });
+      $('#nextPage')?.addEventListener('click', () => { currentPage++; renderPage(); });
+
+      // ตอนลบไฟล์ ให้ re-render หน้า
+      const _oldDeleteItem = deleteItem;
+      window.deleteItem = (li) => _oldDeleteItem(li).then(() => renderPage());
+
+      // ถ้าคุณมีปุ่ม "เลือกทั้งหมด" ให้เลือกเฉพาะรายการบนหน้าปัจจุบัน
+      $('#selectAll')?.addEventListener('click', () => {
+        $$('#fileList .file-item:not(.hidden-by-filter):not(.hidden-by-page) .rowcheck')
+          .forEach(cb => cb.checked = true);
+        updateSelCount();
+      });
+
       // เวลาไทย
       $$('#fileList .time').forEach(t => {
         const sec = Number(t.dataset.ts || 0);
