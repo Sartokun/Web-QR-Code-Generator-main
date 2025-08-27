@@ -683,10 +683,15 @@ def _list_assets():
 @app.get("/admin")
 def admin_index():
     _require_admin()
-    q = (request.args.get("q") or "").strip().lower()
     rows = _list_assets()
 
-    return render_template("admin.html", rows=rows, files=rows, admin_key=ADMIN_KEY)
+    return render_template(
+        "admin.html",
+        rows=rows, files=rows,
+        admin_key=ADMIN_KEY,
+        files_url=url_for('admin_index', key=ADMIN_KEY),
+        dash_url=url_for('admin_dashboard', key=ADMIN_KEY),
+    )
 
 @app.post("/admin/delete")
 def admin_delete():

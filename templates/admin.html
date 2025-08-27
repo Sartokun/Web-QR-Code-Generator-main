@@ -281,11 +281,10 @@
   <div class="container-xxl">
     <ul class="nav nav-pills mb-3">
       <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('admin_dashboard') }}?key={{ admin_key }}">Dashboard</a>
+        <a class="nav-link" href="{{ dash_url }}">Dashboard</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link active"
-          href="{{ url_for('admin_index') if 'admin_index' in globals() else url_for('admin') }}?key={{ admin_key }}">รายการไฟล์</a>
+        <a class="nav-link active" href="{{ files_url }}">รายการไฟล์</a>
       </li>
     </ul>
 
