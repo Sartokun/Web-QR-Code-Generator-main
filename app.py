@@ -39,6 +39,106 @@ def parse_ecc(val: str):
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT
 
+# ====== Analytics: daily metrics (visits/unique/downloads/uploads) ======
+import json, hashlib
+from threading import Lock
+from datetime import datetime, timedelta, timezone
+try:
+    from zoneinfo import ZoneInfo  # Py3.9+
+    BKK_TZ = ZoneInfo("Asia/Bangkok")
+except Exception:
+    BKK_TZ = timezone(timedelta(hours=7))  # fallback
+
+ANALYTICS_DB_PATH = os.path.join("static", "analytics.json")
+os.makedirs(os.path.dirname(ANALYTICS_DB_PATH), exist_ok=True)
+_ANALYTICS_LOCK = Lock()
+ANALYTICS_SALT = os.getenv("ANALYTICS_SALT", "change_me_salt")  # แนะนำตั้งใน ENV
+
+def _today_key(dt=None):
+    dt = dt or datetime.now(BKK_TZ)
+    return dt.strftime("%Y-%m-%d")
+
+def _hash_ip(ip: str) -> str:
+    h = hashlib.sha256()
+    h.update((ip + "|" + ANALYTICS_SALT).encode("utf-8"))
+    return h.hexdigest()[:24]  # สั้นพออ่าน
+
+def _read_analytics():
+    if not os.path.exists(ANALYTICS_DB_PATH):
+        return {}
+    try:
+        with open(ANALYTICS_DB_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _write_analytics(db):
+    tmp = ANALYTICS_DB_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False)
+    os.replace(tmp, ANALYTICS_DB_PATH)
+
+def track_visit(ip: str):
+    key = _today_key()
+    with _ANALYTICS_LOCK:
+        db = _read_analytics()
+        day = db.setdefault(key, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
+        day["visits"] += 1
+        h = _hash_ip(ip or "unknown")
+        if h not in day["unique"]:
+            day["unique"].append(h)
+        _write_analytics(db)
+
+def track_download():
+    key = _today_key()
+    with _ANALYTICS_LOCK:
+        db = _read_analytics()
+        day = db.setdefault(key, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
+        day["downloads"] += 1
+        _write_analytics(db)
+
+def track_upload():
+    key = _today_key()
+    with _ANALYTICS_LOCK:
+        db = _read_analytics()
+        day = db.setdefault(key, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
+        day["uploads"] += 1
+        _write_analytics(db)
+
+def analytics_series(days=30):
+    """คืนข้อมูล 30 วันหลังสุดสำหรับ chart"""
+    db = _read_analytics()
+    labels, visits, uniques, downloads, uploads = [], [], [], [], []
+    today = datetime.now(BKK_TZ).date()
+    for i in range(days-1, -1, -1):
+        d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        row = db.get(d, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
+        labels.append(d)
+        visits.append(row.get("visits", 0))
+        uniques.append(len(row.get("unique", [])))
+        downloads.append(row.get("downloads", 0))
+        uploads.append(row.get("uploads", 0))
+    return {
+        "labels": labels, "visits": visits, "uniques": uniques,
+        "downloads": downloads, "uploads": uploads
+    }
+
+def analytics_totals(days=30):
+    s = analytics_series(days)
+    return {
+        "days": days,
+        "visits": sum(s["visits"]),
+        "uniques": sum(s["uniques"]),
+        "downloads": sum(s["downloads"]),
+        "uploads": sum(s["uploads"]),
+        "today": {
+            "visits": s["visits"][-1],
+            "uniques": s["uniques"][-1],
+            "downloads": s["downloads"][-1],
+            "uploads": s["uploads"][-1],
+        }
+    }
+# =======================================================================
 
 # ===== เพิ่ม helper ทำไล่สี =====
 def _linear_gradient(size, c1, c2):
@@ -189,6 +289,7 @@ def resize_logo_keep_ratio_with_padding(logo_path, box_size, pad_ratio=0.1):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    track_visit(request.headers.get("X-Forwarded-For", request.remote_addr))
     logos = [f for f in os.listdir(UPLOAD_FOLDER) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
     ecc = (request.form.get("ecc") or "H").upper()
     if request.method == "POST":
@@ -221,6 +322,7 @@ def index():
             )
             buf = BytesIO(svg_bytes)
             buf.seek(0)
+            track_download()
             return send_file(buf, mimetype="image/svg+xml", as_attachment=True, download_name="qr_code.svg")
 
         # PNG
@@ -238,6 +340,7 @@ def index():
         buf = BytesIO()
         img.save(buf, format="PNG")
         buf.seek(0)
+        track_download()
         return send_file(buf, mimetype="image/png", as_attachment=True, download_name="qr_code.png")
 
     return render_template("index.html", logos=logos)
@@ -302,6 +405,7 @@ def upload_asset(atype):
     # ส่งกลับเป็น "ลิงก์แบบ absolute" ใช้งานได้ทันทีใน QR
     long_url = url_for("static", filename=f"files/{atype}/{final_name}", _external=True)
     short_url = create_short_link(long_url)
+    track_upload()
     return jsonify(success=True, url=long_url, short_url=short_url,
                filename=final_name, size=size)
 
@@ -365,6 +469,7 @@ def preview_qr():
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
+    track_download()
     return send_file(buf, mimetype="image/png")
 
 
@@ -588,6 +693,7 @@ def admin_delete():
         if dirty:
             _write_short_db(db)
 
+    track_upload()
     return jsonify(success=True)
 
 @app.post("/admin/shorten")
@@ -599,8 +705,18 @@ def admin_shorten():
 
     # สร้าง short code ใหม่ (ใช้ฟังก์ชัน create_short_link ที่คุณมีอยู่)
     short_url = create_short_link(long_url)
+    track_upload()
     return jsonify(success=True, short_url=short_url)
 
+@app.get("/admin/dashboard")
+def admin_dashboard():
+    _require_admin()
+    days = int(request.args.get("days", "30"))
+    series = analytics_series(days=days)
+    totals = analytics_totals(days=days)
+    return render_template("admin_dashboard.html",
+                           series=series, totals=totals, days=days,
+                           admin_key=ADMIN_KEY)
 
 if __name__ == "__main__":
     app.run(debug=True)

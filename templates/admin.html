@@ -262,12 +262,32 @@
     .hidden-by-page {
       display: none !important;
     }
+
+    .nav-pills .nav-link {
+      color: #e9eef5;
+      border: 1px solid rgba(255, 255, 255, .12);
+      margin-right: 8px
+    }
+
+    .nav-pills .nav-link.active {
+      background: linear-gradient(90deg, #fb87b0, #ec407a);
+      border-color: transparent
+    }
   </style>
 </head>
 
 <body class="py-3">
 
   <div class="container-xxl">
+    <ul class="nav nav-pills mb-3">
+      <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('admin_dashboard') }}?key={{ admin_key }}">Dashboard</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link active"
+          href="{{ url_for('admin_index') if 'admin_index' in globals() else url_for('admin') }}?key={{ admin_key }}">รายการไฟล์</a>
+      </li>
+    </ul>
 
     <!-- Header -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
