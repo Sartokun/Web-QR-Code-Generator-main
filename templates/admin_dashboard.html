@@ -2,58 +2,353 @@
 <html lang="th">
 
 <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Admin · Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
     <style>
+        :root {
+            /* โทนโดยรวม */
+            --bg: #0c0f15;
+            --panel: #141a22;
+            --panel-2: #10151c;
+            --border: #2a3340;
+            --text: #f1f6ff;
+            --muted: #cbd5e6;
+            --muted-2: #9db0c7;
+
+            /* โทนข้อมูล */
+            --c-uni: #78a8ff;
+            /* ผู้เยี่ยมชม */
+            --c-vis: #ff80a7;
+            /* เข้าชม     */
+            --c-dl: #ffc768;
+            /* ดาวน์โหลด */
+            --c-up: #53e0d6;
+            /* อัปโหลด    */
+
+            --accent: #ff85c0;
+            /* ชมพูไฮไลต์ */
+            --ring: rgba(255, 133, 192, .28);
+        }
+
+        /* พื้นหลัง */
+        html,
         body {
-            background: #0f1116;
-            color: #e9eef5
+            min-height: 100%
+        }
+
+        body {
+            background:
+                radial-gradient(1200px 800px at 85% -10%, rgba(255, 133, 192, .14), transparent 60%),
+                radial-gradient(900px 700px at -10% 100%, rgba(120, 168, 255, .12), transparent 70%),
+                var(--bg);
+            color: var(--text);
+            font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .container-xxl {
-            padding-top: 16px
+            padding: 28px 16px 44px;
+            max-width: 1180px
         }
 
+        /* Nav */
         .nav-pills .nav-link {
-            color: #e9eef5;
-            border: 1px solid rgba(255, 255, 255, .12);
-            margin-right: 8px
+            color: var(--text);
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            margin-right: 10px;
+            border-radius: 14px;
+            padding: .5rem 1rem
         }
 
         .nav-pills .nav-link.active {
+            color: #fff;
+            border-color: transparent;
             background: linear-gradient(90deg, #fb87b0, #ec407a);
-            border-color: transparent
+            box-shadow: 0 12px 30px var(--ring)
         }
 
+        /* Title */
+        .page-title {
+            font-weight: 800;
+            letter-spacing: .2px
+        }
+
+        .page-title .sub {
+            color: var(--muted);
+            font-weight: 600
+        }
+
+        /* การ์ดตัวเลข */
         .card {
-            background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
-            border: 1px solid rgba(255, 255, 255, .12);
-            border-radius: 16px
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, .35)
         }
 
-        .muted {
-            color: #a9b3c6
+        .lift:hover {
+            transform: translateY(-2px);
+            transition: .2s ease
+        }
+
+        .stat {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start
+        }
+
+        .stat .ico {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            color: #0d1117;
+            font-size: 1.25rem;
+            font-weight: 900;
+            box-shadow: 0 10px 18px rgba(0, 0, 0, .25)
+        }
+
+        .ico-uni {
+            background: linear-gradient(135deg, #78a8ff, #9ec0ff)
+        }
+
+        .ico-vis {
+            background: linear-gradient(135deg, #ff80a7, #ff9dbb)
+        }
+
+        .ico-dl {
+            background: linear-gradient(135deg, #ffc768, #ffe3a0)
+        }
+
+        .ico-up {
+            background: linear-gradient(135deg, #53e0d6, #8df1ea)
+        }
+
+        .lbl {
+            color: var(--muted);
+            font-weight: 700;
+            font-size: .98rem
+        }
+
+        .val {
+            font-size: 2.1rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-top: 2px;
+            background: linear-gradient(180deg, #ffbedc 0%, #ff5fa0 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 8px 24px rgba(255, 105, 165, .25);
+        }
+
+        .today {
+            color: var(--muted-2);
+            font-size: .95rem
+        }
+
+        /* ส่วนกราฟ */
+        .chart-card {
+            padding: 18px 16px 10px
+        }
+
+        #chart {
+            height: 160px
+        }
+
+        /* ฟอร์ม/ปุ่ม */
+        .controls {
+            gap: 10px
+        }
+
+        .form-select,
+        .form-control {
+            background: #19202a;
+            color: var(--text);
+            border: 1px solid var(--border)
+        }
+
+        .form-select:focus,
+        .form-control:focus {
+            box-shadow: 0 0 0 .25rem var(--ring)
+        }
+
+        .btn-pink {
+            background: linear-gradient(90deg, #fb87b0, #ec407a);
+            color: #fff;
+            border: none;
+            box-shadow: 0 12px 28px var(--ring)
+        }
+
+        .btn-outline-light {
+            border-color: var(--border);
+            color: var(--text)
+        }
+
+        .btn-outline-light:hover {
+            background: #242b38
+        }
+
+        /* ── Table: Dark & Clean ────────────────────────────── */
+        .table-card {
+            padding: 0;
+            border-radius: 18px;
+            overflow: hidden
+        }
+
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, #141a22, #10151c);
+        }
+
+        .table-title {
+            font-weight: 800;
+            letter-spacing: .2px;
+            color: #fff;
+        }
+
+        .table-wrap {
+            max-height: 520px;
+            overflow: auto;
+            background: linear-gradient(180deg, var(--panel), var(--panel-2))
+        }
+
+        .table-wrap::-webkit-scrollbar {
+            height: 10px;
+            width: 10px
+        }
+
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #2f3a4d, #222a37);
+            border-radius: 10px
+        }
+
+        .table-wrap::-webkit-scrollbar-track {
+            background: #10141b
+        }
+
+        table.table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: var(--text)
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: linear-gradient(180deg, #0f141c 0%, #0b1016 100%);
+            border-bottom: 1px solid var(--border);
+            color: #e9f1ff;
+            font-weight: 800;
+            letter-spacing: .2px;
+            padding: 12px 14px;
+            user-select: none;
+        }
+
+        .table thead th.sortable {
+            cursor: pointer;
+            transition: opacity .15s ease;
+        }
+
+        .table thead th.sortable:hover {
+            opacity: .85
+        }
+
+        .table tbody td {
+            border-bottom: 1px dashed rgba(255, 255, 255, .06);
+            padding: 12px 14px
+        }
+
+        .table tbody tr:nth-child(odd) {
+            background: rgba(255, 255, 255, .03)
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255, 133, 192, .08)
+        }
+
+        .num {
+            text-align: right;
+            font-variant-numeric: tabular-nums
+        }
+
+        .num.zero {
+            color: var(--muted-2)
+        }
+
+        .num.unq {
+            color: var(--c-uni);
+            font-weight: 800
+        }
+
+        .num.vis {
+            color: var(--c-vis);
+            font-weight: 800
+        }
+
+        .num.dl {
+            color: var(--c-dl);
+            font-weight: 800
+        }
+
+        .num.up {
+            color: var(--c-up);
+            font-weight: 800
+        }
+
+        #metricsTable {
+            /* สีหลักของตาราง */
+            --bs-table-bg: #0b1118;
+            /* พื้นหลังเซลล์ */
+            --bs-table-color: #eaf1ff;
+            /* สีตัวอักษร */
+            --bs-table-striped-bg: #0f1724;
+            /* แถวคี่ */
+            --bs-table-striped-color: #eaf1ff;
+            --bs-table-hover-bg: #151f2d;
+            /* สีตอนโฮเวอร์ */
+            --bs-table-hover-color: #ffffff;
+
+            /* เส้นขอบ */
+            --bs-border-color: rgba(255, 255, 255, .08);
+            --bs-table-border-color: rgba(255, 255, 255, .08);
+
+            background-color: var(--bs-table-bg) !important;
+            color: var(--bs-table-color) !important;
         }
     </style>
 </head>
 
 <body>
     <div class="container-xxl">
-        <!-- Nav -->
+
+        <!-- เมนูบน -->
         <ul class="nav nav-pills mb-3">
-            <li class="nav-item">
-                <a class="nav-link" href="{{ dash_url }}">Dashboard</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link active" href="{{ files_url }}">รายการไฟล์</a>
-            </li>
+            <li class="nav-item"><a class="nav-link active" href="{{ dash_url }}">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ files_url }}">รายการไฟล์</a></li>
         </ul>
 
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="mb-0">ภาพรวม {{ days }} วันหลัง</h2>
-            <form method="get" class="d-flex gap-2">
+        <!-- หัวข้อ & ตัวกรอง -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h2 class="page-title mb-0">ภาพรวม <span class="sub">{{ days }} วันหลัง</span></h2>
+            <form method="get" class="d-flex controls">
                 <input type="hidden" name="key" value="{{ admin_key }}">
                 <select name="days" class="form-select form-select-sm">
                     <option value="7" {{ 'selected' if days==7 else '' }}>7 วัน</option>
@@ -61,68 +356,100 @@
                     <option value="30" {{ 'selected' if days==30 else '' }}>30 วัน</option>
                     <option value="60" {{ 'selected' if days==60 else '' }}>60 วัน</option>
                 </select>
-                <button class="btn btn-primary btn-sm">อัปเดต</button>
+                <button class="btn btn-pink btn-sm">อัปเดต</button>
+                <button type="button" id="btnCsv" class="btn btn-outline-light btn-sm">ดาวน์โหลด CSV</button>
             </form>
         </div>
 
-        <!-- Stat cards -->
+        <!-- การ์ดสถิติ -->
         <div class="row g-3 mb-3">
             <div class="col-6 col-md-3">
-                <div class="card p-3">
-                    <div class="muted">ผู้เยี่ยมชม (unique)</div>
-                    <div class="fs-3 fw-bold">{{ totals.uniques }}</div>
-                    <div class="muted small">วันนี้: {{ totals.today.uniques }}</div>
+                <div class="card p-3 lift">
+                    <div class="stat">
+                        <div class="ico ico-uni"><i class="bi bi-people"></i></div>
+                        <div>
+                            <div class="lbl">ผู้เยี่ยมชม (unique)</div>
+                            <div class="val">{{ totals.uniques }}</div>
+                            <div class="today">วันนี้: {{ totals.today.uniques }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card p-3">
-                    <div class="muted">เข้าชมทั้งหมด</div>
-                    <div class="fs-3 fw-bold">{{ totals.visits }}</div>
-                    <div class="muted small">วันนี้: {{ totals.today.visits }}</div>
+                <div class="card p-3 lift">
+                    <div class="stat">
+                        <div class="ico ico-vis"><i class="bi bi-graph-up"></i></div>
+                        <div>
+                            <div class="lbl">เข้าชมทั้งหมด</div>
+                            <div class="val">{{ totals.visits }}</div>
+                            <div class="today">วันนี้: {{ totals.today.visits }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card p-3">
-                    <div class="muted">ดาวน์โหลด</div>
-                    <div class="fs-3 fw-bold">{{ totals.downloads }}</div>
-                    <div class="muted small">วันนี้: {{ totals.today.downloads }}</div>
+                <div class="card p-3 lift">
+                    <div class="stat">
+                        <div class="ico ico-dl"><i class="bi bi-download"></i></div>
+                        <div>
+                            <div class="lbl">ดาวน์โหลด</div>
+                            <div class="val">{{ totals.downloads }}</div>
+                            <div class="today">วันนี้: {{ totals.today.downloads }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card p-3">
-                    <div class="muted">อัปโหลดไฟล์</div>
-                    <div class="fs-3 fw-bold">{{ totals.uploads }}</div>
-                    <div class="muted small">วันนี้: {{ totals.today.uploads }}</div>
+                <div class="card p-3 lift">
+                    <div class="stat">
+                        <div class="ico ico-up"><i class="bi bi-upload"></i></div>
+                        <div>
+                            <div class="lbl">อัปโหลดไฟล์</div>
+                            <div class="val">{{ totals.uploads }}</div>
+                            <div class="today">วันนี้: {{ totals.today.uploads }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Chart -->
-        <div class="card p-3 mb-3">
-            <canvas id="chart" height="96"></canvas>
+        <!-- กราฟ -->
+        <div class="card chart-card mb-3">
+            <canvas id="chart"></canvas>
         </div>
 
-        <!-- Table -->
-        <div class="card p-3">
-            <div class="table-responsive">
-                <table class="table table-sm align-middle">
+        <!-- ตารางรายวัน -->
+        <div class="card table-card">
+            <div class="table-toolbar">
+                <div class="table-title">ตารางรายวัน</div>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small text-secondary">เรียง</label>
+                    <select id="sortOrder" class="form-select form-select-sm">
+                        <option value="latest" selected>ใหม่ → เก่า</option>
+                        <option value="oldest">เก่า → ใหม่</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table id="metricsTable" class="table table-sm align-middle">
                     <thead>
                         <tr>
-                            <th>วันที่ (ICT)</th>
-                            <th>ผู้เยี่ยมชม (unique)</th>
-                            <th>เข้าชม</th>
-                            <th>ดาวน์โหลด</th>
-                            <th>อัปโหลด</th>
+                            <th id="thDate" class="sortable">วันที่ (ICT)</th>
+                            <th class="num">ผู้เยี่ยมชม (unique)</th>
+                            <th class="num">เข้าชม</th>
+                            <th class="num">ดาวน์โหลด</th>
+                            <th class="num">อัปโหลด</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for i in range(series.labels|length) %}
                         <tr>
                             <td>{{ series.labels[i] }}</td>
-                            <td>{{ series.uniques[i] }}</td>
-                            <td>{{ series.visits[i] }}</td>
-                            <td>{{ series.downloads[i] }}</td>
-                            <td>{{ series.uploads[i] }}</td>
+                            <td class="num" data-n>{{ series.uniques[i] }}</td>
+                            <td class="num" data-n>{{ series.visits[i] }}</td>
+                            <td class="num" data-n>{{ series.downloads[i] }}</td>
+                            <td class="num" data-n>{{ series.uploads[i] }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -131,43 +458,127 @@
         </div>
     </div>
 
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-    <!-- ฝังข้อมูลกราฟเป็น JSON แยก เพื่อไม่ให้ชนกับตัว parser ของ JS -->
+    <!-- ข้อมูลกราฟ -->
     <script id="metrics-json" type="application/json">
-        {{ series | tojson }}
-    </script>
+    {{ series | tojson }}
+  </script>
+
     <script>
         (() => {
-            // อ่าน JSON ที่เราฝังไว้
             const m = JSON.parse(document.getElementById('metrics-json').textContent);
 
-            // ตั้งชื่อให้สั้น อ่านง่าย และไม่ชนกับ global
-            const chartLabels = m.labels;
-            const dataUniques = m.uniques;
-            const dataVisits = m.visits;
-            const dataDownloads = m.downloads;
-            const dataUploads = m.uploads;
+            /* จัดเลขในตาราง: คอมม่า + สีตามชนิด */
+            (function beautifyTable() {
+                const rows = document.querySelectorAll('table.table tbody tr');
+                rows.forEach(tr => {
+                    const tds = tr.children;
+                    [[1, 'unq'], [2, 'vis'], [3, 'dl'], [4, 'up']].forEach(([idx, cls]) => {
+                        const td = tds[idx];
+                        td.classList.add('num');
+                        const v = Number(td.textContent || 0);
+                        td.textContent = v.toLocaleString('th-TH');
+                        if (v === 0) td.classList.add('zero'); else td.classList.add(cls);
+                    });
+                });
+            })();
+            (function beautifyTable() {
+                const rows = document.querySelectorAll('#metricsTable tbody tr');
+                rows.forEach(tr => {
+                    const tds = tr.children;
+                    [[1, 'unq'], [2, 'vis'], [3, 'dl'], [4, 'up']].forEach(([idx, cls]) => {
+                        const td = tds[idx];
+                        const v = Number(td.textContent || 0);
+                        td.textContent = v.toLocaleString('th-TH');
+                        td.classList.add('num');
+                        if (v === 0) td.classList.add('zero'); else td.classList.add(cls);
+                    });
+                });
+            })();
 
+            (function sortableByDate() {
+                const table = document.getElementById('metricsTable');
+                const tbody = table.tBodies[0];
+                const select = document.getElementById('sortOrder');
+                const thDate = document.getElementById('thDate');
+
+                function sortTable(order) {
+                    const rows = Array.from(tbody.rows);
+                    rows.sort((a, b) => {
+                        const da = new Date(a.cells[0].textContent.trim());
+                        const db = new Date(b.cells[0].textContent.trim());
+                        return order === 'latest' ? (db - da) : (da - db);
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+
+                // เปลี่ยนค่าจาก select
+                if (select) {
+                    select.addEventListener('change', () => sortTable(select.value));
+                    sortTable(select.value);                  // เรียงครั้งแรก
+                }
+
+                // คลิกหัวคอลัมน์ "วันที่ (ICT)" เพื่อสลับการเรียง
+                if (thDate && select) {
+                    thDate.addEventListener('click', () => {
+                        select.value = (select.value === 'latest') ? 'oldest' : 'latest';
+                        select.dispatchEvent(new Event('change'));
+                    });
+                }
+            })();
+
+            /* ดาวน์โหลด CSV */
+            document.getElementById('btnCsv').addEventListener('click', () => {
+                const rows = [['date', 'uniques', 'visits', 'downloads', 'uploads']];
+                for (let i = 0; i < m.labels.length; i++) {
+                    rows.push([m.labels[i], m.uniques[i], m.visits[i], m.downloads[i], m.uploads[i]]);
+                }
+                const csv = rows.map(r => r.join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'metrics.csv';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            });
+
+            /* วาดกราฟ */
             const ctx = document.getElementById('chart').getContext('2d');
+            const cs = getComputedStyle(document.documentElement);
+            const C = {
+                uni: cs.getPropertyValue('--c-uni').trim(),
+                vis: cs.getPropertyValue('--c-vis').trim(),
+                dl: cs.getPropertyValue('--c-dl').trim(),
+                up: cs.getPropertyValue('--c-up').trim()
+            };
+            const grad = (hex) => { const g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, hex); g.addColorStop(1, 'rgba(0,0,0,0)'); return g; };
+
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: chartLabels,
+                    labels: m.labels,
                     datasets: [
-                        { label: 'ผู้เยี่ยมชม (unique)', data: dataUniques, tension: .3 },
-                        { label: 'เข้าชม', data: dataVisits, tension: .3 },
-                        { label: 'ดาวน์โหลด', data: dataDownloads, tension: .3 },
-                        { label: 'อัปโหลด', data: dataUploads, tension: .3 },
+                        { label: 'ผู้เยี่ยมชม (unique)', data: m.uniques, borderColor: C.uni, backgroundColor: grad(C.uni), tension: .35, fill: true, pointRadius: 0, borderWidth: 2.6 },
+                        { label: 'เข้าชม', data: m.visits, borderColor: C.vis, backgroundColor: grad(C.vis), tension: .35, fill: true, pointRadius: 0, borderWidth: 2.6 },
+                        { label: 'ดาวน์โหลด', data: m.downloads, borderColor: C.dl, backgroundColor: grad(C.dl), tension: .35, fill: true, pointRadius: 0, borderWidth: 2.6 },
+                        { label: 'อัปโหลด', data: m.uploads, borderColor: C.up, backgroundColor: grad(C.up), tension: .35, fill: true, pointRadius: 0, borderWidth: 2.6 },
                     ]
                 },
                 options: {
-                    responsive: true,
+                    maintainAspectRatio: false, responsive: true,
                     interaction: { mode: 'index', intersect: false },
-                    plugins: { legend: { position: 'bottom' } },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#e8efff', font: { weight: '600' } } },
+                        tooltip: {
+                            backgroundColor: '#0d1117', titleColor: '#eaf1ff', bodyColor: '#eaf1ff',
+                            borderColor: '#2b3240', borderWidth: 1.2, padding: 10, cornerRadius: 8
+                        }
+                    },
                     scales: {
-                        x: { grid: { color: 'rgba(255,255,255,.06)' } },
-                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.06)' } }
+                        x: { grid: { color: 'rgba(255,255,255,.07)' }, ticks: { color: '#dbe3f6', maxRotation: 0, autoSkip: true } },
+                        y: { grid: { color: 'rgba(255,255,255,.07)' }, ticks: { color: '#dbe3f6' }, beginAtZero: true }
                     }
                 }
             });

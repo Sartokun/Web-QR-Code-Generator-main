@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from pathlib import Path
 from threading import Lock
 import hmac
+from werkzeug.utils import safe_join
 
 app = Flask(__name__)
 
@@ -16,7 +17,8 @@ UPLOAD_FOLDER = "static/logo"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # จำกัดขนาดไฟล์สูงสุด 2MB
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
+GLOBAL_MAX_UPLOAD_MB = int(os.getenv("GLOBAL_MAX_UPLOAD_MB", "64"))
+app.config['MAX_CONTENT_LENGTH'] = GLOBAL_MAX_UPLOAD_MB * 1024 * 1024
 app.config["PREFERRED_URL_SCHEME"] = "https"
 ALLOWED_EXT = {"png", "jpg", "jpeg"}
 
@@ -152,6 +154,17 @@ def analytics_totals(days=30):
         }
     }
 # =======================================================================
+def _human_bytes(n: int) -> str:
+    """แปลง byte เป็นข้อความอ่านง่าย"""
+    step = 1024.0
+    units = ["B", "KB", "MB", "GB", "TB"]
+    s = float(n)
+    for u in units:
+        if s < step or u == units[-1]:
+            if u == "B":
+                return f"{int(s)} {u}"
+            return f"{s:.2f} {u}"
+        s /= step
 
 # ===== เพิ่ม helper ทำไล่สี =====
 def _linear_gradient(size, c1, c2):
@@ -388,40 +401,48 @@ def upload_asset(atype):
     if not f or not f.filename:
         return jsonify(error="no file"), 400
 
-    # ตรวจนามสกุล
-    base = secure_filename(f.filename)
-    stem, ext = os.path.splitext(base)
-    ext_l = ext.lower().lstrip(".")
-    if ext_l not in ASSET_EXTS.get(atype, set()):
+    # --- หา ext จาก "ชื่อไฟล์ต้นฉบับ" ก่อน ---
+    orig_name = f.filename
+    orig_ext = os.path.splitext(orig_name)[1].lower().lstrip(".")
+
+    # ถ้าชื่อไฟล์เป็นอักษร non-ASCII จน secure_filename ตัดทิ้ง ext หาย
+    # ให้เดา ext จาก mimetype แทน
+    if not orig_ext:
+        mime = (f.mimetype or "").lower()
+        mime_map = {
+            "application/pdf": "pdf",
+            "audio/mpeg": "mp3",
+            "image/jpeg": "jpg",
+            "image/png": "png",
+        }
+        orig_ext = mime_map.get(mime, "")
+
+    if orig_ext not in ASSET_EXTS.get(atype, set()):
         return jsonify(error="invalid extension"), 400
 
-    # ตรวจขนาดไฟล์
+    # --- ตั้งชื่อไฟล์อย่างปลอดภัย (ใช้ secure_filename เฉพาะ 'ชื่อ' ไม่รวม ext) ---
+    base_stem = secure_filename(os.path.splitext(orig_name)[0]) or "file"
+
+    # --- ตรวจขนาดไฟล์ตามเพดานประเภทย่อย ---
+    pos = f.stream.tell()
     f.stream.seek(0, os.SEEK_END)
     size = f.stream.tell()
-    f.stream.seek(0)
+    f.stream.seek(pos)
     max_bytes = ASSET_MAX_MB[atype] * 1024 * 1024
     if size > max_bytes:
         return jsonify(error=f"file too large (>{ASSET_MAX_MB[atype]} MB)"), 400
 
-    # ตั้งชื่อไฟล์แบบปลอดภัย + กันเคสชื่อว่าง/เป็นแค่เครื่องหมาย
-    safe_stem = (stem or "").strip("-_.")
-    if not safe_stem:
-        safe_stem = "file"
-    final_name = f"{safe_stem}_{int(time.time())}.{ext_l}"
-
-    # เซฟ
+    final_name = f"{base_stem}_{int(time.time())}.{orig_ext}"
     save_dir = ASSET_FOLDERS[atype]
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, final_name)
     f.save(save_path)
 
-    # ส่งกลับเป็น "ลิงก์แบบ absolute" ใช้งานได้ทันทีใน QR
     long_url = url_for("static", filename=f"files/{atype}/{final_name}", _external=True)
     short_url = create_short_link(long_url)
     track_upload()
     return jsonify(success=True, url=long_url, short_url=short_url,
-               filename=final_name, size=size)
-
+                   filename=final_name, size=size)
 
 @app.route("/upload_logo", methods=["POST"])
 def upload_logo():
@@ -482,7 +503,6 @@ def preview_qr():
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
-    track_download()
     return send_file(buf, mimetype="image/png")
 
 
@@ -503,7 +523,10 @@ def delete_logo(logo_name):
 # ข้อความเมื่อไฟล์เกินกำหนด
 @app.errorhandler(413)
 def too_large(e):
-    return "File too large. Max 2MB.", 413
+    return jsonify(
+        success=False,
+        error=f"ไฟล์ใหญ่เกินเพดานรวม {GLOBAL_MAX_UPLOAD_MB} MB (global limit)"
+    ), 413
 
 def _read_short_db():
     if not os.path.exists(SHORT_DB_PATH):
@@ -684,57 +707,56 @@ def _list_assets():
 def admin_index():
     _require_admin()
     rows = _list_assets()
+    
+    total_size = sum(r.get("size", 0) for r in rows)
+    totals = {
+        "all":   len(rows),
+        "pdf":   sum(1 for r in rows if r.get("atype") == "pdf"),
+        "mp3":   sum(1 for r in rows if r.get("atype") == "mp3"),
+        "image": sum(1 for r in rows if r.get("atype") == "image"),
+        "size":  _human_bytes(total_size),
+        "size_bytes": total_size,
+    }
 
+    urls = _admin_nav_urls()
     return render_template(
         "admin.html",
         rows=rows, files=rows,
+        totals=totals,
         admin_key=ADMIN_KEY,
-        files_url=url_for('admin_index', key=ADMIN_KEY),
-        dash_url=url_for('admin_dashboard', key=ADMIN_KEY),
+        **urls
     )
 
 @app.post("/admin/delete")
 def admin_delete():
     _require_admin()
-    kind = request.form.get("kind")
-    name = request.form.get("name")
-    atype = request.form.get("atype")
 
-    if not name or kind not in ("logo", "asset"):
-        return jsonify(error="invalid params"), 400
+    # รับได้ทั้ง JSON และ form
+    data = request.get_json(silent=True) or request.form or {}
 
-    if kind == "logo":
-        base_dir = os.path.join("static", "logo")
-        rel = f"logo/{name}"
-    else:
-        if atype not in ASSET_FOLDERS:
-            return jsonify(error="bad type"), 400
-        base_dir = ASSET_FOLDERS[atype]
-        rel = f"files/{atype}/{name}"
+    atype = (data.get("atype") or data.get("type") or data.get("category") or "").lower()
+    fname = (data.get("filename") or data.get("name") or data.get("file") or "").strip()
 
-    # ป้องกัน path traversal
-    path = os.path.abspath(os.path.join(base_dir, name))
-    if not path.startswith(os.path.abspath(base_dir)):
-        return jsonify(error="forbidden path"), 403
+    if not atype or not fname or atype not in ASSET_FOLDERS:
+        return jsonify(success=False, error="invalid params"), 400
 
-    if not os.path.exists(path):
-        return jsonify(error="not found"), 404
+    # กัน path traversal และตรวจนามสกุลตามชนิด
+    fname = os.path.basename(fname)
+    ext = os.path.splitext(fname)[1].lower().lstrip(".")
+    if ext not in ASSET_EXTS.get(atype, set()):
+        return jsonify(success=False, error="invalid extension"), 400
 
-    os.remove(path)
+    folder = ASSET_FOLDERS[atype]
+    fpath = safe_join(folder, fname)
 
-    # ล้าง short-link ที่ชี้มายังไฟล์นี้
-    long_url = url_for("static", filename=rel, _external=True)
-    with _SHORT_DB_LOCK:
-        db = _read_short_db()
-        dirty = False
-        for code, item in list(db.items()):
-            if item.get("url") == long_url:
-                del db[code]
-                dirty = True
-        if dirty:
-            _write_short_db(db)
+    if not fpath or not os.path.isfile(fpath):
+        return jsonify(success=False, error="not found"), 404
 
-    track_upload()
+    try:
+        os.remove(fpath)
+    except Exception as e:
+        return jsonify(success=False, error=f"delete failed: {e}"), 500
+
     return jsonify(success=True)
 
 @app.post("/admin/shorten")
@@ -755,9 +777,21 @@ def admin_dashboard():
     days = int(request.args.get("days", "30"))
     series = analytics_series(days=days)
     totals = analytics_totals(days=days)
-    return render_template("admin_dashboard.html",
-                           series=series, totals=totals, days=days,
-                           admin_key=ADMIN_KEY)
+
+    urls = _admin_nav_urls()
+    return render_template(
+        "admin_dashboard.html",
+        series=series, totals=totals, days=days,
+        admin_key=ADMIN_KEY,
+        **urls
+    )
+    
+# ===== helper: admin nav urls =====
+def _admin_nav_urls():
+    return {
+        "dash_url": url_for("admin_dashboard", key=ADMIN_KEY),
+        "files_url": url_for("admin_index", key=ADMIN_KEY)
+    }
     
 # ==== Error Handlers ===========================================================
 @app.errorhandler(403)
