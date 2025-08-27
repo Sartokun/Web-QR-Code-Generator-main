@@ -8,6 +8,7 @@ import numpy as np
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from threading import Lock
+import hmac
 
 app = Flask(__name__)
 
@@ -32,6 +33,18 @@ ECC_MAP = {
     "Q": constants.ERROR_CORRECT_Q,  # ~25%
     "H": constants.ERROR_CORRECT_H,  # ~30%
 }
+# ---- Bootstrap required dirs (วางไว้หลังสร้าง app) ----
+REQUIRED_DIRS = [
+    os.path.join("static", "logo"),
+    os.path.join("static", "files"),
+    os.path.join("static", "files", "pdf"),
+    os.path.join("static", "files", "mp3"),
+    os.path.join("static", "files", "image"),
+]
+for d in REQUIRED_DIRS:
+    os.makedirs(d, exist_ok=True)
+
+
 def parse_ecc(val: str):
     return ECC_MAP.get((val or "H").upper(), constants.ERROR_CORRECT_H)
 
@@ -572,9 +585,13 @@ def _human_bytes(n):
         n /= 1024.0
 
 def _require_admin():
-    key = request.args.get("key") or request.headers.get("X-Admin-Key")
-    if key != ADMIN_KEY:
-        abort(403)
+    # ถ้าไม่ตั้งค่าไว้ ให้ตอบ 503 ชัดเจน
+    if not ADMIN_KEY:
+        abort(503, description="ADMIN_KEY is not configured on the server.")
+    supplied = request.args.get("key") or request.headers.get("X-Admin-Key")
+    ok = supplied and hmac.compare_digest(str(supplied), str(ADMIN_KEY))
+    if not ok:
+        abort(403, description="Forbidden: invalid admin key.")
 
 def _file_rows():
     """รวบรวมรายการไฟล์ทั้งหมดสำหรับหน้า admin"""
@@ -635,22 +652,41 @@ def _file_rows():
     return rows
 
 # ==== Admin routes =============================================================
+def _safe_json_load(path, default):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+def _list_assets():
+    rows = []
+    for atype in ("pdf", "mp3", "image"):
+        base = os.path.join("static", "files", atype)
+        if not os.path.isdir(base):
+            continue
+        for name in sorted(os.listdir(base)):
+            full = os.path.join(base, name)
+            try:
+                st = os.stat(full)
+            except FileNotFoundError:
+                continue
+            rows.append({
+                "name": name,
+                "atype": atype,
+                "size": st.st_size,
+                "mtime": st.st_mtime,
+                "url": url_for("static", filename=f"files/{atype}/{name}", _external=True),
+            })
+    return rows
+
 @app.get("/admin")
 def admin_index():
     _require_admin()
     q = (request.args.get("q") or "").strip().lower()
-    rows = _file_rows()
-    if q:
-        rows = [r for r in rows if q in r["name"].lower() or (r["atype"] or "").lower().startswith(q)]
-    totals = {
-        "all": len(rows),
-        "logo": sum(1 for r in rows if r["kind"] == "logo"),
-        "pdf":  sum(1 for r in rows if r["atype"] == "pdf"),
-        "mp3":  sum(1 for r in rows if r["atype"] == "mp3"),
-        "image":sum(1 for r in rows if r["atype"] == "image"),
-        "size": _human_bytes(sum(r["size"] for r in rows)),
-    }
-    return render_template("admin.html", rows=rows, totals=totals, admin_key=ADMIN_KEY)
+    rows = _list_assets()
+
+    return render_template("admin.html", rows=rows, files=rows, admin_key=ADMIN_KEY)
 
 @app.post("/admin/delete")
 def admin_delete():
@@ -717,6 +753,20 @@ def admin_dashboard():
     return render_template("admin_dashboard.html",
                            series=series, totals=totals, days=days,
                            admin_key=ADMIN_KEY)
+    
+# ==== Error Handlers ===========================================================
+@app.errorhandler(403)
+def h403(e):  # type: ignore
+    return render_template("error.html", code=403, message=str(e)), 403
+
+@app.errorhandler(503)
+def h503(e):  # type: ignore
+    return render_template("error.html", code=503, message=str(e)), 503
+
+@app.errorhandler(500)
+def h500(e):  # type: ignore
+    # ไม่โชว์รายละเอียดภายในในโปรดักชัน
+    return render_template("error.html", code=500, message="Internal Server Error"), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
