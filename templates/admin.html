@@ -281,10 +281,10 @@
   <div class="container-xxl">
     <ul class="nav nav-pills mb-3">
       <li class="nav-item">
-        <a class="nav-link" href="{{ dash_url }}">Dashboard</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">Dashboard</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link active" href="{{ files_url }}">รายการไฟล์</a>
+        <a href="{{ url_for('admin_index') }}" class="btn btn-outline-light">รายการไฟล์</a>
       </li>
     </ul>
 
@@ -537,7 +537,7 @@
       fd.append('kind', li.dataset.kind);
       fd.append('atype', li.dataset.atype || '');
       fd.append('name', li.dataset.name);
-      return fetch('/admin/delete?key=' + encodeURIComponent(ADMIN_KEY), { method: 'POST', body: fd })
+      return fetch('/admin/delete', { method: 'POST', body: fd, credentials: 'same-origin'})
         .then(r => r.json()).then(d => {
           if (!d.success) throw new Error(d.error || 'ลบไม่สำเร็จ');
           li.remove(); showToast('ลบแล้ว');
@@ -547,7 +547,7 @@
     function shortenUrl(longUrl, btn) {
       btn.disabled = true; btn.textContent = 'กำลังสร้าง…';
       const fd = new FormData(); fd.append('url', longUrl);
-      fetch('/admin/shorten?key=' + encodeURIComponent(ADMIN_KEY), { method: 'POST', body: fd })
+      fetch('/admin/shorten', { method: 'POST', body: fd, credentials: 'same-origin' })
         .then(r => r.json()).then(d => {
           if (!d.success) throw new Error(d.error || 'fail');
           showToast('สร้างลิงก์สั้นสำเร็จ');

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, jsonify, url_for, redirect, abort
+from flask import Flask, render_template, request, send_file, jsonify, url_for, redirect, abort, session
 from io import BytesIO
 import os, math, time, json, secrets
 from qrcode import QRCode, constants
@@ -10,8 +10,11 @@ from pathlib import Path
 from threading import Lock
 import hmac
 from werkzeug.utils import safe_join
+from functools import wraps
 
 app = Flask(__name__)
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 
 UPLOAD_FOLDER = "static/logo"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -674,6 +677,44 @@ def _file_rows():
     rows.sort(key=lambda r: r["mtime"], reverse=True)
     return rows
 
+def _strip_key_redirect():
+    """ถ้า URL มี ?key=... ให้ redirect ไป URL เดิมที่ไม่มี key"""
+    if 'key' in request.args:
+        clean = url_for(request.endpoint, **(request.view_args or {}))
+        return redirect(clean, code=302)
+    return None
+
+def _ensure_admin():
+    """ยืนยันสิทธิ์แอดมิน (session/header/query)"""
+    # 1) ถ้ามี header ก็ยอมรับและจำไว้ใน session
+    hdr = request.headers.get('X-Admin-Key')
+    if hdr and hdr == ADMIN_KEY:
+        session['is_admin'] = True
+
+    # 2) ถ้ามี query ?key= ก็ยอมรับและจำไว้ใน session
+    qk = request.args.get('key')
+    if qk and qk == ADMIN_KEY:
+        session['is_admin'] = True
+        # ตัด key ออกจาก URL
+        return _strip_key_redirect()
+
+    # 3) ถ้า session เคยผ่านแล้วก็โอเค
+    if session.get('is_admin'):
+        # เผื่อมาจากบุ๊คมาร์คที่ยังมี key อยู่ ตัดออกให้ด้วย
+        return _strip_key_redirect()
+
+    # ไม่ผ่าน -> 403
+    abort(403)
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        maybe_redirect = _ensure_admin()
+        if maybe_redirect:
+            return maybe_redirect
+        return fn(*args, **kwargs)
+    return wrapper
+
 # ==== Admin routes =============================================================
 def _safe_json_load(path, default):
     try:
@@ -704,6 +745,7 @@ def _list_assets():
     return rows
 
 @app.get("/admin")
+@admin_required
 def admin_index():
     _require_admin()
     rows = _list_assets()
@@ -728,6 +770,7 @@ def admin_index():
     )
 
 @app.post("/admin/delete")
+@admin_required
 def admin_delete():
     _require_admin()
 
@@ -760,6 +803,7 @@ def admin_delete():
     return jsonify(success=True)
 
 @app.post("/admin/shorten")
+@admin_required
 def admin_shorten():
     _require_admin()
     long_url = request.form.get("url")
@@ -772,6 +816,7 @@ def admin_shorten():
     return jsonify(success=True, short_url=short_url)
 
 @app.get("/admin/dashboard")
+@admin_required
 def admin_dashboard():
     _require_admin()
     days = int(request.args.get("days", "30"))

@@ -341,8 +341,8 @@
 
         <!-- เมนูบน -->
         <ul class="nav nav-pills mb-3">
-            <li class="nav-item"><a class="nav-link active" href="{{ dash_url }}">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ files_url }}">รายการไฟล์</a></li>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">Dashboard</a>
+            <a href="{{ url_for('admin_index') }}" class="btn btn-outline-light">รายการไฟล์</a>
         </ul>
 
         <!-- หัวข้อ & ตัวกรอง -->
