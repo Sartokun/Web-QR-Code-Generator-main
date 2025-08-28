@@ -365,19 +365,25 @@
         </ul>
 
 
-        <!-- หัวข้อ & ตัวกรอง -->
+        <!-- ส่วนหัวข้อ & ตัวกรอง -->
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
             <h2 class="page-title mb-0">ภาพรวม <span class="sub">{{ days }} วันหลัง</span></h2>
-            <form method="get" class="d-flex controls">
+
+            <form method="get" action="{{ url_for('admin_dashboard') }}" class="d-flex controls">
+                {% if not session.get('is_admin') %}
                 <input type="hidden" name="key" value="{{ admin_key }}">
+                {% endif %}
+
                 <select name="days" class="form-select form-select-sm">
-                    <option value="7" {{ 'selected' if days==7 else '' }}>7 วัน</option>
-                    <option value="14" {{ 'selected' if days==14 else '' }}>14 วัน</option>
-                    <option value="30" {{ 'selected' if days==30 else '' }}>30 วัน</option>
-                    <option value="60" {{ 'selected' if days==60 else '' }}>60 วัน</option>
+                    <option value="7" {{ 'selected' if days|int==7 else '' }}>7 วัน</option>
+                    <option value="14" {{ 'selected' if days|int==14 else '' }}>14 วัน</option>
+                    <option value="30" {{ 'selected' if days|int==30 else '' }}>30 วัน</option>
+                    <option value="60" {{ 'selected' if days|int==60 else '' }}>60 วัน</option>
                 </select>
-                <button class="btn btn-pink btn-sm">อัปเดต</button>
-                <button type="button" id="btnCsv" class="btn btn-outline-light btn-sm">ดาวน์โหลด CSV</button>
+
+                <button class="btn btn-pink btn-sm" type="submit">อัปเดต</button>
+                <!-- เพิ่มปุ่มนี้ -->
+                <button id="btnCsv" class="btn btn-outline-light btn-sm" type="button">ดาวน์โหลด CSV</button>
             </form>
         </div>
 

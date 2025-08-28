@@ -1,122 +1,389 @@
 <!doctype html>
 <html lang="th">
+
 <head>
   <meta charset="utf-8" />
   <title>Admin · Files</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
 
-  <!-- Bootstrap + Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
 
   <style>
-    :root{
-      --bg:#0c0f15; --panel:#141a22; --panel-2:#10151c;
-      --border:#2a3340; --text:#f1f6ff; --muted:#a9b3c6;
-      --accent:#fb87b0; --accent-2:#ec407a; --ring:rgba(255,133,192,.28);
-      --chip:#202532;
+    :root {
+      --bg: #0c0f15;
+      --panel: #141a22;
+      --panel-2: #0f151d;
+      --border: #263043;
+      --text: #eef3ff;
+      --muted: #acb6c9;
+      --accent: #ff7fb1;
+      --accent-2: #ff5e98;
+      --ring: rgba(255, 127, 177, .28);
+      --chip: #1a2130
     }
 
-    /* ------- BG & Font (ให้เหมือน dashboard) ------- */
-    html,body{min-height:100%}
-    body{
+    html,
+    body {
+      min-height: 100%
+    }
+
+    body {
       background:
-        radial-gradient(1200px 800px at 85% -10%, rgba(255,133,192,.14), transparent 60%),
-        radial-gradient(900px 700px at -10% 100%, rgba(120,168,255,.12), transparent 70%),
+        radial-gradient(1200px 800px at 85% -10%, rgba(255, 133, 192, .14), transparent 60%),
+        radial-gradient(900px 700px at -10% 100%, rgba(120, 168, 255, .12), transparent 70%),
         var(--bg);
-      color:var(--text);
+      color: var(--text);
       font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale
     }
 
-    .container-xxl{padding:28px 16px 44px; max-width:1180px}
-
-    /* ------- Nav Pills ------- */
-    .nav-pills .nav-link{
-      color:var(--text);
-      border:1px solid var(--border);
-      background:linear-gradient(180deg, var(--panel), var(--panel-2));
-      margin-right:10px; border-radius:14px; padding:.5rem 1rem;
-      transition:transform .15s ease, box-shadow .2s ease;
+    .container-xxl {
+      max-width: 1180px;
+      padding: 28px 16px 44px
     }
-    .nav-pills .nav-link.active{
-      color:#fff; border-color:transparent;
-      background:linear-gradient(90deg,#fb87b0,#ec407a);
-      box-shadow:0 12px 30px var(--ring);
+
+    /* tabs */
+    .nav-pills .nav-link {
+      color: var(--text);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border-radius: 14px;
+      padding: .5rem 1rem;
+      margin-right: 10px;
+      transition: transform .15s, box-shadow .2s
     }
-    .nav-pills .nav-link:hover{transform:translateY(-1px); box-shadow:0 10px 26px rgba(255,133,192,.18)}
 
-    /* ------- Panels / Card ------- */
-    .card-panel{
-      background:linear-gradient(180deg, var(--panel), var(--panel-2));
-      border:1px solid var(--border); border-radius:18px; box-shadow:0 16px 42px rgba(0,0,0,.35);
+    .nav-pills .nav-link:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(255, 127, 177, .18)
     }
-    .toolbar{position:sticky; top:10px; z-index:5}
 
-    /* ------- Search + Controls ------- */
-    .search{
-      background:#19202a; border:1px solid var(--border); color:#fff; caret-color:#fff;
-      border-radius:12px; padding:.7rem 1rem;
+    .nav-pills .nav-link.active {
+      color: #fff;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-color: transparent;
+      box-shadow: 0 12px 30px var(--ring)
     }
-    .search:focus{outline:none; box-shadow:0 0 0 .25rem var(--ring)}
-    .search::placeholder{color:#cbd5e6}
-    .filters .btn{border:1px solid var(--border); color:#e9eef5}
-    .filters .btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-color:transparent}
-    .sort-select{background:#19202a; border:1px solid var(--border); color:#fff; border-radius:10px}
 
-    /* ------- File list ------- */
-    .file-list{list-style:none; padding:0; margin:0}
-    .file-item{
-      display:grid; grid-template-columns:56px 1fr auto; gap:16px; padding:14px 16px;
-      align-items:center; border-bottom:1px dashed rgba(255,255,255,.08);
+    /* card */
+    .card-panel {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 14px 38px rgba(0, 0, 0, .35)
     }
-    .file-item:last-child{border-bottom:none}
-    .thumb{width:48px; height:48px; border-radius:12px; object-fit:cover; background:#0e1013;
-      display:flex; align-items:center; justify-content:center; font-weight:700; color:#8892a6}
-    .name{font-weight:800; word-break:break-word}
-    .meta{color:var(--muted); font-size:.92rem}
-    .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
-    .chip{background:var(--chip); border:1px solid var(--border); border-radius:999px; padding:.25rem .6rem; font-size:.85rem; color:#cdd6e6}
-    .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-    .btn-soft{border:1px solid var(--border); background:#19202a; color:#e9eef5; border-radius:10px}
-    .btn-grad{background:linear-gradient(90deg,var(--accent),var(--accent-2)); border:none; color:#fff; border-radius:10px}
-    .small-link{color:#8dd0ff; text-decoration:none} .small-link:hover{text-decoration:underline}
-    .section-title{font-size:1.75rem; font-weight:900} .muted{color:#a9b3c6}
 
-    /* Multi-select */
-    .thumb-wrap{position:relative}
-    .selbox{position:absolute; left:-8px; top:-8px; display:none; transform:scale(1.05)}
-    .select-mode .selbox{display:block}
-    .bulkbar{position:sticky; bottom:12px; z-index:20}
-    .hidden-by-filter,.hidden-by-page{display:none!important}
+    .toolbar {
+      position: sticky;
+      top: 10px;
+      z-index: 5
+    }
 
-    @media (max-width:768px){
-      .file-item{grid-template-columns:48px 1fr}
-      .actions{grid-column:1 / -1}
+    .search,
+    .sort-select {
+      background: #17202b;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 12px;
+      transition: box-shadow .2s ease, border-color .2s ease
+    }
+
+    .search::placeholder {
+      color: #c9d3e6
+    }
+
+    .search:focus,
+    .sort-select:focus {
+      outline: none;
+      border-color: transparent;
+      box-shadow: 0 0 0 .25rem var(--ring)
+    }
+
+    .filters .btn {
+      border: 1px solid var(--border);
+      color: #e9eef5;
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .filters .btn:hover {
+      background: rgba(255, 255, 255, .06)
+    }
+
+    .filters .btn.active {
+      color: #fff;
+      border-color: transparent;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 26px var(--ring)
+    }
+
+    /* list */
+    .file-list {
+      list-style: none;
+      padding: 0;
+      margin: 0
+    }
+
+    .file-item {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 16px;
+      padding: 14px 16px;
+      align-items: center;
+      border-bottom: 1px dashed rgba(255, 255, 255, .08);
+      transition: background .15s ease
+    }
+
+    .file-item:hover {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .file-item:last-child {
+      border-bottom: none
+    }
+
+    .thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #0e1013;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #8892a6
+    }
+
+    .name {
+      font-weight: 800;
+      word-break: break-word
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: .92rem
+    }
+
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px
+    }
+
+    .chip {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .25rem .6rem;
+      font-size: .85rem;
+      color: #d6def0
+    }
+
+    .actions {
+      display: flex;
+      gap: .625rem;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .btn-action {
+      --btn-bg: rgba(255, 255, 255, .06);
+      --btn-border: rgba(255, 255, 255, .08);
+      --btn-text: #e7eef7;
+      --btn-hover: rgba(255, 255, 255, .1);
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      height: 36px;
+      padding: 0 .9rem;
+      border-radius: 12px;
+      border: 1px solid var(--btn-border);
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      font-size: .95rem;
+      font-weight: 600;
+      transition: transform .12s, background .15s, border-color .15s;
+      backdrop-filter: saturate(120%) blur(2px)
+    }
+
+    .btn-action:hover {
+      background: var(--btn-hover);
+      border-color: rgba(255, 255, 255, .18);
+      transform: translateY(-1px)
+    }
+
+    .btn-muted {
+      --btn-bg: rgba(255, 255, 255, .05);
+      --btn-text: #cdd5e3;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 12px
+    }
+
+    .btn-muted:hover {
+      --btn-bg: rgba(255, 255, 255, .05);
+      --btn-text: #cdd5e3;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 12px
+    }
+
+    .btn-primary {
+      border: 0;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      box-shadow: 0 10px 26px rgba(255, 127, 177, .22)
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.04);
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+      color: #0a0e14
+    }
+
+    .btn-danger {
+      border: 0;
+      color: #fff;
+      background: linear-gradient(135deg, #f05d6a 0%, #ff7f7f 100%);
+      box-shadow: 0 10px 26px rgba(240, 93, 106, .22)
+    }
+
+    .btn-danger:hover {
+      filter: brightness(1.05);
+      background: linear-gradient(135deg, #fff 0%, #ff7f7f 100%);
+      color: #0a0e14
+    }
+
+    .btn-action[disabled],
+    .btn-action.is-disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      filter: grayscale(.2)
+    }
+
+    .btn-action svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      opacity: .95
+    }
+
+    .thumb-wrap {
+      position: relative
+    }
+
+    .selbox {
+      position: absolute;
+      left: -8px;
+      top: -8px;
+      display: none;
+      transform: scale(1.05)
+    }
+
+    .select-mode .selbox {
+      display: block
+    }
+
+    .short-link-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      height: 36px;
+      padding: 0 .75rem;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .06);
+      color: #e7efff;
+      border: 1px dashed rgba(255, 255, 255, .16);
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .bulkbar {
+      position: sticky;
+      bottom: 12px;
+      z-index: 20
+    }
+
+    .hidden-by-filter,
+    .hidden-by-page {
+      display: none !important
+    }
+
+    @media (max-width:768px) {
+      .file-item {
+        grid-template-columns: 48px 1fr
+      }
+
+      .actions {
+        grid-column: 1 / -1
+      }
+    }
+
+    /* Multi-select styles */
+    .file-item.selectable {
+      cursor: crosshair
+    }
+
+    .file-item.drag-mark {
+      background: rgba(255, 127, 177, .12);
+      outline: 2px dashed var(--accent)
+    }
+
+    .file-item.selected {
+      background: rgba(255, 255, 255, .04);
+      outline: 1px dashed rgba(255, 255, 255, .14);
+      box-shadow: none
+    }
+
+    #rubberBand {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      border: 1px solid var(--accent);
+      background: rgba(255, 127, 177, .15);
+      border-radius: 8px;
+      pointer-events: none;
+      display: none;
+      z-index: 9999
     }
   </style>
 </head>
-<body>
 
+<body>
   <div class="container-xxl">
     <!-- Tabs -->
     <ul class="nav nav-pills mb-3 gap-2">
       <li class="nav-item">
-        <a href="{{ url_for('admin_dashboard') }}" class="nav-link {{ 'active' if request.endpoint=='admin_dashboard' else '' }}">Dashboard</a>
+        <a class="nav-link {{ 'active' if request.endpoint == 'admin_dashboard' else '' }}"
+          href="{{ url_for('admin_dashboard') }}">Dashboard</a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('admin_index') }}" class="nav-link {{ 'active' if request.endpoint in ['admin_index'] else '' }}">รายการไฟล์</a>
+        <a class="nav-link {{ 'active' if request.endpoint == 'admin_index' else '' }}"
+          href="{{ url_for('admin_index') }}">รายการไฟล์</a>
       </li>
     </ul>
 
     <!-- Header -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
       <div>
-        <div class="section-title">ไฟล์ทั้งหมด</div>
-        <div class="small muted">
+        <div class="fs-3 fw-bold">ไฟล์ทั้งหมด</div>
+        <div class="small text-secondary">
           รวม: <span id="stat-all">{{ totals.all }}</span> ไฟล์ · ขนาดรวม {{ totals.size }}
           | โลโก้ <span id="stat-logo">{{ totals.logo }}</span>
           · PDF <span id="stat-pdf">{{ totals.pdf }}</span>
@@ -131,17 +398,19 @@
       <div class="p-3">
         <div class="row g-3 align-items-center">
           <div class="col-12 col-lg-5">
-            <input id="q" class="form-control search" type="search" placeholder="ค้นหาชื่อไฟล์…">
+            <input id="q" type="search" class="form-control search" placeholder="ค้นหาชื่อไฟล์…" />
           </div>
+
           <div class="col-12 col-lg-5">
-            <div class="btn-group filters" role="group" aria-label="filter">
-              <button data-type="all" class="btn btn-sm btn-dark active">ทั้งหมด</button>
-              <button data-type="logo" class="btn btn-sm btn-dark">โลโก้</button>
-              <button data-type="pdf"  class="btn btn-sm btn-dark">PDF</button>
-              <button data-type="mp3"  class="btn btn-sm btn-dark">MP3</button>
-              <button data-type="image"class="btn btn-sm btn-dark">รูปภาพ</button>
+            <div class="btn-group filters" role="group">
+              <button class="btn btn-sm btn-dark active" data-type="all">ทั้งหมด</button>
+              <button class="btn btn-sm btn-dark" data-type="logo">โลโก้</button>
+              <button class="btn btn-sm btn-dark" data-type="pdf">PDF</button>
+              <button class="btn btn-sm btn-dark" data-type="mp3">MP3</button>
+              <button class="btn btn-sm btn-dark" data-type="image">รูปภาพ</button>
             </div>
           </div>
+
           <div class="col-6 col-lg-2">
             <select id="sort" class="form-select form-select-sm sort-select">
               <option value="mtime_desc">ล่าสุด → เก่า</option>
@@ -154,45 +423,50 @@
           </div>
 
           <div class="col-6 col-lg-2 text-lg-end">
-            <button id="toggleSelect" class="btn btn-soft btn-sm"><i class="bi bi-check2-square me-1"></i> เลือกหลายไฟล์</button>
+            <button id="toggleSelect" class="btn btn-muted btn-sm">
+              <i class="bi bi-check2-square me-1"></i> เลือกหลายไฟล์
+            </button>
           </div>
 
-          <!-- Page size & Pager -->
+          <!-- page size & pager -->
           <div class="col-6 col-lg-2">
             <div class="d-flex align-items-center gap-2 justify-content-lg-end">
-              <span class="muted small">แสดง</span>
+              <span class="text-secondary small">แสดง</span>
               <select id="pageSize" class="form-select form-select-sm sort-select">
-                <option value="10" selected>10</option><option value="20">20</option>
-                <option value="50">50</option><option value="100">100</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
               </select>
-              <span class="muted small">รายการ</span>
+              <span class="text-secondary small">รายการ</span>
             </div>
           </div>
           <div class="col-6 col-lg-3">
             <div class="d-flex align-items-center gap-2 justify-content-lg-end">
-              <button id="prevPage" class="btn btn-soft btn-sm">ก่อนหน้า</button>
-              <span id="pageInfo" class="muted small">1 / 1</span>
-              <button id="nextPage" class="btn btn-soft btn-sm">ถัดไป</button>
+              <button id="prevPage" class="btn btn-muted btn-sm">ก่อนหน้า</button>
+              <span id="pageInfo" class="text-secondary small">1 / 1</span>
+              <button id="nextPage" class="btn btn-muted btn-sm">ถัดไป</button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- List -->
+    <!-- File list -->
     <div class="card-panel">
-      <ul class="file-list" id="fileList">
+      <ul id="fileList" class="file-list">
         {% for r in rows %}
-        <li class="file-item" data-kind="{{ r.kind }}" data-atype="{{ r.atype or '' }}" data-name="{{ r.name }}" data-size="{{ r.size }}" data-mtime="{{ r.mtime }}">
-          <!-- thumb -->
+        <li class="file-item" data-url="{{ r.url }}" data-short="{{ r.short_url or '' }}" data-kind="{{ r.kind }}"
+          data-atype="{{ r.atype or '' }}" data-name="{{ r.name }}" data-size="{{ r.size }}" data-mtime="{{ r.mtime }}">
           <div class="thumb-wrap">
-            <input type="checkbox" class="form-check-input selbox rowcheck">
+            <input type="checkbox" class="form-check-input selbox rowcheck" />
             {% if r.thumb and (r.atype == 'image' or r.kind == 'logo') %}
             <img class="thumb" src="{{ r.thumb }}" alt="thumb">
-            {% else %}<div class="thumb">–</div>{% endif %}
+            {% else %}
+            <div class="thumb">–</div>
+            {% endif %}
           </div>
 
-          <!-- info -->
           <div>
             <div class="name">{{ r.name }}</div>
             <div class="meta">
@@ -208,193 +482,360 @@
             </div>
           </div>
 
-          <!-- actions -->
           <div class="actions">
-            <a class="btn btn-soft btn-sm" href="{{ r.url }}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> เปิด</a>
-            <button class="btn btn-soft btn-sm" data-copy="{{ r.url }}"><i class="bi bi-clipboard-check"></i> คัดลอก</button>
+            <button class="btn-action btn-muted act-open" title="เปิดดู">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 17L17 7M10 7h7v7" />
+              </svg><span>เปิด</span>
+            </button>
 
-            {% if r.short %}
-              <a class="small-link" href="{{ r.short }}" target="_blank">{{ r.short }}</a>
-              <button class="btn btn-soft btn-sm" data-copy="{{ r.short }}">คัดลอกสั้น</button>
+            <button class="btn-action btn-muted act-copy" title="คัดลอกลิงก์">
+              <svg viewBox="0 0 24 24">
+                <path d="M9 7h6M9 11h6M9 15h6" />
+                <rect x="5" y="4" width="14" height="16" rx="2" />
+              </svg>
+              <span>คัดลอก</span>
+            </button>
+
+            {% if r.short_url %}
+            <span class="short-link-pill me-1">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+                <path d="M14 11a5 5 0 0 1-7 0l-2-2a5 5 0 0 1 7-7l1 1" />
+              </svg>
+              {{ r.short_url }}
+            </span>
+            <button class="btn-action btn-muted act-copy-short" title="คัดลอกลิงก์สั้น">
+              <svg viewBox="0 0 24 24">
+                <path d="M9 7h6M9 11h6M9 15h6" />
+                <rect x="5" y="4" width="14" height="16" rx="2" />
+              </svg>
+              <span>คัดลอกลิงก์สั้น</span>
+            </button>
             {% else %}
-              <button class="btn btn-outline-info btn-sm shorten-btn" data-url="{{ r.url }}">สร้างลิงก์สั้น</button>
+            <button class="btn-action btn-primary act-shorten" title="สร้างลิงก์สั้น">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+                <path d="M4 12h6M7 9v6" />
+              </svg>
+              <span>สร้างลิงก์สั้น</span>
+            </button>
             {% endif %}
 
-            <button class="btn btn-danger btn-sm del-btn"><i class="bi bi-trash"></i> ลบ</button>
+            <button class="btn-action btn-danger act-delete" title="ลบไฟล์">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 6h18M8 6v14a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M9 6l1-2h4l1 2" />
+              </svg>
+              <span>ลบ</span>
+            </button>
           </div>
         </li>
         {% endfor %}
       </ul>
     </div>
 
-    <!-- Bulk action bar -->
+    <!-- Bulk bar -->
     <div id="bulkBar" class="bulkbar d-none">
       <div class="card-panel p-3">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div><strong id="selCount">0</strong> ไฟล์ที่เลือก</div>
           <div class="d-flex gap-2">
-            <button id="selectAll" class="btn btn-soft btn-sm">เลือกทั้งหมด</button>
-            <button id="clearSel" class="btn btn-soft btn-sm">ยกเลิกการเลือก</button>
-            <button id="bulkDel" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i> ลบที่เลือก</button>
+            <button id="selectAll" class="btn btn-muted btn-sm">เลือกทั้งหมด</button>
+            <button id="clearSel" class="btn btn-muted btn-sm">ยกเลิกการเลือก</button>
+            <button id="bulkDel" class="btn btn-muted btn-danger btn-sm"><i class="bi bi-trash me-1"></i> ลบที่เลือก</button>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </div><!-- /.container -->
 
   <!-- Toast -->
   <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
-    <div id="toast" class="toast align-items-center text-white bg-dark border-0" role="alert">
+    <div id="toast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive"
+      aria-atomic="true">
       <div class="d-flex">
-        <div class="toast-body" id="toastBody">OK</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <div id="toastBody" class="toast-body">OK</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+          aria-label="Close"></button>
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-    let currentPage=1;
-    const toast=new bootstrap.Toast($('#toast'));
-    const showToast=m=>{ $('#toastBody').textContent=m; toast.show(); };
+    /* ---------- helpers ---------- */
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const toast = new bootstrap.Toast($('#toast'));
+    const showToast = (m) => { $('#toastBody').textContent = m; toast.show(); };
+    const toThai = (sec) =>
+      new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(sec * 1000)) + ' (ICT)';
 
-    /* ไทย ICT */
-    const toThai=sec=>new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(sec*1000))+' (ICT)';
+    /* ---------- paging/filter/sort ---------- */
+    let currentPage = 1;
+    const visibleAfterFilter = () => $$('#fileList .file-item').filter(li => !li.classList.contains('hidden-by-filter'));
+    function renderPage() {
+      const per = parseInt($('#pageSize').value || '10', 10);
+      const all = $$('#fileList .file-item');
+      const vis = visibleAfterFilter();
+      const pages = Math.max(1, Math.ceil(vis.length / per));
+      currentPage = Math.min(Math.max(1, currentPage), pages);
+      all.forEach(li => li.classList.add('hidden-by-page'));
+      const start = (currentPage - 1) * per;
+      vis.slice(start, start + per).forEach(li => li.classList.remove('hidden-by-page'));
+      $('#pageInfo').textContent = `${currentPage} / ${pages}`;
+      $('#prevPage').disabled = currentPage <= 1;
+      $('#nextPage').disabled = currentPage >= pages;
+    }
+    function applyFilters() {
+      const q = $('#q').value.trim().toLowerCase();
+      const type = $('.filters .btn.active')?.dataset.type || 'all';
+      const items = $$('#fileList .file-item');
 
-    const visibleItemsAfterFilter = () => $$('#fileList .file-item').filter(li=>!li.classList.contains('hidden-by-filter'));
+      const stat = { all: 0, logo: 0, pdf: 0, mp3: 0, image: 0 };
+      items.forEach(it => {
+        const name = it.dataset.name.toLowerCase();
+        const kind = it.dataset.kind;
+        const atype = it.dataset.atype;
+        const matchQ = !q || name.includes(q);
+        const matchT = (type === 'all') || (type === 'logo' && kind === 'logo') || (type === atype);
+        const show = matchQ && matchT;
+        it.classList.toggle('hidden-by-filter', !show);
+        if (show) { stat.all++; if (kind === 'logo') stat.logo++; if (atype) stat[atype] = (stat[atype] || 0) + 1; }
+      });
+      $('#stat-all').textContent = stat.all;
+      $('#stat-logo').textContent = stat.logo;
+      $('#stat-pdf').textContent = stat.pdf || 0;
+      $('#stat-mp3').textContent = stat.mp3 || 0;
+      $('#stat-image').textContent = stat.image || 0;
 
-    function renderPage(){
-      const perPage=parseInt($('#pageSize')?.value||'10',10);
-      const all=$$('#fileList .file-item');
-      const vis=visibleItemsAfterFilter();
-      const pages=Math.max(1,Math.ceil(vis.length/perPage));
-      currentPage=Math.min(Math.max(1,currentPage),pages);
-
-      all.forEach(li=>li.classList.add('hidden-by-page'));
-      const start=(currentPage-1)*perPage;
-      vis.slice(start,start+perPage).forEach(li=>li.classList.remove('hidden-by-page'));
-
-      $('#pageInfo').textContent=`${currentPage} / ${pages}`;
-      $('#prevPage').disabled=(currentPage<=1);
-      $('#nextPage').disabled=(currentPage>=pages);
+      currentPage = 1; renderPage();
+    }
+    function sortList() {
+      const mode = $('#sort').value;
+      const ul = $('#fileList');
+      const items = $$('#fileList .file-item');
+      const key = {
+        mtime_desc: e => -Number(e.dataset.mtime),
+        mtime_asc: e => Number(e.dataset.mtime),
+        name_asc: e => e.dataset.name.toLowerCase(),
+        name_desc: e => '\uffff' + e.dataset.name.toLowerCase(),
+        size_desc: e => -Number(e.dataset.size),
+        size_asc: e => Number(e.dataset.size),
+      }[mode];
+      items.sort((a, b) => key(a) > key(b) ? 1 : -1).forEach(li => ul.appendChild(li));
+      currentPage = 1; renderPage();
     }
 
-    function applyFilters(){
-      const q=$('#q').value.trim().toLowerCase();
-      const type=$('.filters .btn.active')?.dataset.type || 'all';
-      const items=$$('#fileList .file-item');
+    /* ---------- select mode ---------- */
+    function toggleSelectMode(forceOn) {
+      const on = (forceOn ?? !document.body.classList.contains('select-mode'));
+      document.body.classList.toggle('select-mode', on);
+      $('#bulkBar').classList.toggle('d-none', !on);
+      $('#toggleSelect').classList.toggle('btn-primary', on);
+      if (!on) { $$('.rowcheck').forEach(cb => cb.checked = false); updateSelCount(); }
+      // mark selectable
+      $$('#fileList .file-item').forEach(el => el.classList.toggle('selectable', on));
+    }
+    const updateSelCount = () => $('#selCount').textContent = $$('.rowcheck:checked').length;
 
-      let vis={all:0,logo:0,pdf:0,mp3:0,image:0};
-      items.forEach(it=>{
-        const name=it.dataset.name.toLowerCase();
-        const kind=it.dataset.kind, atype=it.dataset.atype;
-        const matchQ=!q || name.includes(q);
-        const matchT=(type==='all') || (type==='logo' && kind==='logo') || (type===atype);
-        const show=matchQ && matchT;
-        it.classList.toggle('hidden-by-filter',!show);
-        if(show){ vis.all++; if(kind==='logo') vis.logo++; if(atype) vis[atype]=(vis[atype]||0)+1; }
+    /* ---------- server actions ---------- */
+    async function createShortLink(li, btn) {
+      try {
+        btn.classList.add('is-disabled'); btn.setAttribute('disabled', 'disabled');
+        const resp = await fetch('/admin/shorten', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: li.dataset.url }),
+          credentials: 'same-origin'
+        });
+        const ct = resp.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          const txt = await resp.text();
+          throw new Error('Server returned non-JSON: ' + txt.slice(0, 120));
+        }
+        const data = await resp.json();
+        if (!resp.ok || !data?.success) throw new Error(data?.error || resp.statusText);
+
+        // UI
+        const pill = document.createElement('span');
+        pill.className = 'short-link-pill me-1';
+        pill.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 1-7 0l-2-2a5 5 0 0 1 7-7l1 1"/></svg> ${data.short_url}`;
+        btn.parentElement.insertBefore(pill, btn);
+        const copyShort = document.createElement('button');
+        copyShort.className = 'btn-action btn-muted act-copy-short';
+        copyShort.innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 7h6M9 11h6M9 15h6"/><rect x="5" y="4" width="14" height="16" rx="2"/></svg><span>คัดลอกลิงก์สั้น</span>`;
+        btn.parentElement.insertBefore(copyShort, btn);
+        btn.remove();
+        li.dataset.short = data.short_url;
+        showToast(data.already ? 'มีลิงก์สั้นอยู่แล้ว' : 'สร้างลิงก์สั้นสำเร็จ');
+      } catch (err) {
+        console.error(err); showToast(err.message || 'เกิดข้อผิดพลาด');
+        btn.classList.remove('is-disabled'); btn.removeAttribute('disabled');
+      }
+    }
+    async function deleteOne(li) {
+      const fd = new FormData();
+      fd.append('atype', li.dataset.atype || '');
+      fd.append('name', li.dataset.name);
+      const resp = await fetch('/admin/delete', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const data = await resp.json();
+      if (!resp.ok || !data?.success) throw new Error(data?.error || 'ลบไม่สำเร็จ');
+      li.remove(); showToast('ลบแล้ว'); applyFilters();
+    }
+
+    /* ---------- init events ---------- */
+    document.addEventListener('DOMContentLoaded', () => {
+      // time (ICT)
+      $$('#fileList .time').forEach(t => {
+        const sec = Number(t.dataset.ts || 0);
+        if (sec > 0) t.textContent = toThai(sec);
       });
 
-      $('#stat-all').textContent=vis.all;
-      $('#stat-logo').textContent=vis.logo;
-      $('#stat-pdf').textContent=vis.pdf||0;
-      $('#stat-mp3').textContent=vis.mp3||0;
-      $('#stat-image').textContent=vis.image||0;
-
-      currentPage=1; renderPage();
-    }
-
-    function sortList(){
-      const mode=$('#sort').value, ul=$('#fileList'), items=$$('#fileList .file-item');
-      const key={
-        mtime_desc:e=>-Number(e.dataset.mtime),
-        mtime_asc:e=> Number(e.dataset.mtime),
-        name_asc :e=> e.dataset.name.toLowerCase(),
-        name_desc:e=> '\uffff'+e.dataset.name.toLowerCase(),
-        size_desc:e=>-Number(e.dataset.size),
-        size_asc :e=> Number(e.dataset.size),
-      }[mode];
-      items.sort((a,b)=> key(a)>key(b)?1:-1).forEach(li=>ul.appendChild(li));
-      currentPage=1; renderPage();
-    }
-
-    function deleteItem(li){
-      const fd=new FormData();
-      fd.append('kind', li.dataset.kind);
-      fd.append('atype', li.dataset.atype||'');
-      fd.append('name', li.dataset.name);
-      return fetch('/admin/delete',{method:'POST',body:fd,credentials:'same-origin'})
-        .then(r=>r.json()).then(d=>{
-          if(!d.success) throw new Error(d.error||'ลบไม่สำเร็จ');
-          li.remove(); showToast('ลบแล้ว'); applyFilters();
-        });
-    }
-    function shortenUrl(url,btn){
-      btn.disabled=true; btn.textContent='กำลังสร้าง…';
-      const fd=new FormData(); fd.append('url',url);
-      fetch('/admin/shorten',{method:'POST',body:fd,credentials:'same-origin'})
-        .then(r=>r.json()).then(d=>{
-          if(!d.success) throw new Error(d.error||'fail');
-          showToast('สร้างลิงก์สั้นสำเร็จ'); location.reload();
-        }).catch(e=>{
-          showToast(e.message||'ผิดพลาด'); btn.disabled=false; btn.textContent='สร้างลิงก์สั้น';
-        });
-    }
-
-    function toggleSelectMode(forceOn){
-      const on = forceOn ?? !document.body.classList.contains('select-mode');
-      document.body.classList.toggle('select-mode',on);
-      $('#bulkBar').classList.toggle('d-none',!on);
-      $('#toggleSelect').classList.toggle('btn-grad',on);
-      if(!on){ $$('.rowcheck').forEach(cb=>cb.checked=false); updateSelCount(); }
-    }
-    const updateSelCount=()=> $('#selCount').textContent=$$('.rowcheck:checked').length;
-
-    document.addEventListener('DOMContentLoaded', ()=>{
-      // เวลาประเทศไทย
-      $$('#fileList .time').forEach(t=>{ const sec=Number(t.dataset.ts||0); if(sec>0) t.textContent=toThai(sec); });
-
-      // ค้นหา / กรอง / เรียง
+      // toolbar
       $('#q').addEventListener('input', applyFilters);
-      $$('.filters .btn').forEach(b=> b.addEventListener('click', ()=>{
-        $$('.filters .btn').forEach(x=>x.classList.remove('active'));
+      $$('.filters .btn').forEach(b => b.addEventListener('click', () => {
+        $$('.filters .btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active'); applyFilters();
       }));
       $('#sort').addEventListener('change', sortList);
+      $('#pageSize').addEventListener('change', () => { currentPage = 1; renderPage(); });
+      $('#prevPage').addEventListener('click', () => { currentPage--; renderPage(); });
+      $('#nextPage').addEventListener('click', () => { currentPage++; renderPage(); });
 
-      // แบ่งหน้า
-      $('#pageSize')?.addEventListener('change',()=>{currentPage=1; renderPage();});
-      $('#prevPage')?.addEventListener('click',()=>{currentPage--; renderPage();});
-      $('#nextPage')?.addEventListener('click',()=>{currentPage++; renderPage();});
-
-      // โหมดเลือกหลายไฟล์
-      $('#toggleSelect')?.addEventListener('click',()=>toggleSelectMode());
-      document.body.addEventListener('change', e=>{ if(e.target.classList.contains('rowcheck')) updateSelCount(); });
-      $('#selectAll')?.addEventListener('click',()=>{
-        $$('#fileList .file-item:not(.hidden-by-filter):not(.hidden-by-page) .rowcheck').forEach(cb=>cb.checked=true);
+      $('#toggleSelect').addEventListener('click', () => toggleSelectMode());
+      document.body.addEventListener('change', e => { if (e.target.classList.contains('rowcheck')) updateSelCount(); });
+      $('#selectAll').addEventListener('click', () => {
+        $$('#fileList .file-item:not(.hidden-by-filter):not(.hidden-by-page) .rowcheck').forEach(cb => cb.checked = true);
         updateSelCount();
       });
-      $('#clearSel')?.addEventListener('click',()=>{ $$('.rowcheck').forEach(cb=>cb.checked=false); updateSelCount(); });
-      $('#bulkDel')?.addEventListener('click',()=>{
-        const items=$$('.rowcheck:checked').map(cb=>cb.closest('.file-item'));
-        if(items.length===0) return;
-        if(!confirm(`ลบ ${items.length} รายการถาวร?`)) return;
-        Promise.allSettled(items.map(li=>deleteItem(li))).then(()=>{
-          showToast('ลบรายการที่เลือกแล้ว'); toggleSelectMode(false); applyFilters();
+      $('#clearSel').addEventListener('click', () => { $$('.rowcheck').forEach(cb => cb.checked = false); updateSelCount(); });
+      $('#bulkDel').addEventListener('click', async () => {
+        const items = $$('.rowcheck:checked').map(cb => cb.closest('.file-item'));
+        if (items.length === 0) return;
+        if (!confirm(`ลบ ${items.length} รายการถาวร?`)) return;
+        await Promise.allSettled(items.map(li => deleteOne(li)));
+        showToast('ลบรายการที่เลือกแล้ว'); toggleSelectMode(false); applyFilters();
+      });
+
+      // actions
+      document.body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button'); if (!btn) return;
+        const li = btn.closest('.file-item');
+        if (btn.classList.contains('act-open')) { window.open(li.dataset.url, '_blank'); }
+        else if (btn.classList.contains('act-copy')) { await navigator.clipboard.writeText(li.dataset.url); showToast('คัดลอกลิงก์แล้ว'); }
+        else if (btn.classList.contains('act-copy-short')) { const s = li.dataset.short; if (s) { await navigator.clipboard.writeText(s); showToast('คัดลอกลิงก์สั้นแล้ว'); } }
+        else if (btn.classList.contains('act-shorten')) { await createShortLink(li, btn); }
+        else if (btn.classList.contains('act-delete')) { if (confirm('ลบไฟล์นี้ถาวร?')) { try { await deleteOne(li); } catch (err) { showToast(err.message || 'ลบไม่สำเร็จ'); } } }
+      });
+
+      sortList(); applyFilters();
+    });
+
+    /* ====== Click-to-select + Drag-to-select (with threshold) ====== */
+    (function () {
+      const fileList = $('#fileList'); if (!fileList) return;
+
+      // rubber band element
+      const band = document.createElement('div'); band.id = 'rubberBand'; document.body.appendChild(band);
+
+      const INTERACTIVE = 'button,a,.btn,input,select,textarea,[data-no-select],[contenteditable]';
+      const getCb = (item) => item.querySelector('.rowcheck');
+      const setChecked = (item, on) => {
+        const cb = getCb(item); if (!cb) return;
+        if (cb.checked !== !!on) {
+          cb.checked = !!on;
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        item.classList.toggle('selected', cb.checked);
+      };
+      const updateBar = () => $('#selCount').textContent = $$('.rowcheck:checked').length;
+
+      // เปิดโหมดแล้ว mark selectable
+      $('#toggleSelect')?.addEventListener('click', () => {
+        const on = document.body.classList.contains('select-mode');
+        $$('#fileList .file-item').forEach(el => el.classList.toggle('selectable', on));
+      });
+
+      // คลิกทั้งแถว toggle เมื่ออยู่ใน select-mode และไม่กดบน element interactive
+      let suppressClick = false; // กันคลิกหลัง mouseup ของ drag
+      fileList.addEventListener('click', (e) => {
+        if (suppressClick) { suppressClick = false; return; }
+        if (!document.body.classList.contains('select-mode')) return;
+        if (e.target.closest(INTERACTIVE)) return;
+        const item = e.target.closest('.file-item'); if (!item) return;
+        const cb = getCb(item);
+        setChecked(item, !(cb && cb.checked));
+        updateBar();
+      });
+
+      // Drag select
+      let dragging = false, didDrag = false, start = { x: 0, y: 0 };
+      const THRESHOLD = 6; // px
+
+      fileList.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        if (!document.body.classList.contains('select-mode')) return;
+        if (e.target.closest(INTERACTIVE)) return;
+
+        dragging = true; didDrag = false; start = { x: e.clientX, y: e.clientY };
+        band.style.display = 'block'; band.style.left = start.x + 'px'; band.style.top = start.y + 'px';
+        band.style.width = '0px'; band.style.height = '0px';
+        e.preventDefault(); // กัน selection text
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+
+        const dx = Math.abs(e.clientX - start.x);
+        const dy = Math.abs(e.clientY - start.y);
+        if (dx > THRESHOLD || dy > THRESHOLD) didDrag = true;
+
+        const x1 = Math.min(start.x, e.clientX);
+        const y1 = Math.min(start.y, e.clientY);
+        const x2 = Math.max(start.x, e.clientX);
+        const y2 = Math.max(start.y, e.clientY);
+        band.style.left = x1 + 'px'; band.style.top = y1 + 'px';
+        band.style.width = (x2 - x1) + 'px'; band.style.height = (y2 - y1) + 'px';
+
+        // preview with .drag-mark
+        const rect = { left: x1, top: y1, right: x2, bottom: y2 };
+        $$('#fileList .file-item').forEach(el => {
+          const r = el.getBoundingClientRect();
+          const overlap = !(r.right < rect.left || r.left > rect.right || r.bottom < rect.top || r.top > rect.bottom);
+          el.classList.toggle('drag-mark', overlap);
         });
       });
 
-      // คัดลอก / ย่อ / ลบ (delegation)
-      document.body.addEventListener('click', e=>{
-        const copyBtn=e.target.closest('[data-copy]'); if(copyBtn){ navigator.clipboard.writeText(copyBtn.getAttribute('data-copy')).then(()=>showToast('คัดลอกแล้ว')); }
-        const sBtn=e.target.closest('.shorten-btn'); if(sBtn){ shortenUrl(sBtn.dataset.url, sBtn); }
-        const del=e.target.closest('.del-btn'); if(del){ const li=del.closest('.file-item'); if(confirm('ลบไฟล์นี้ถาวร?')) deleteItem(li); }
+      window.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        band.style.display = 'none';
+
+        if (didDrag) {
+          // commit: select all items had .drag-mark (additive)
+          $$('#fileList .file-item.drag-mark').forEach(el => {
+            el.classList.remove('drag-mark');
+            setChecked(el, true);
+          });
+          updateBar();
+          suppressClick = true; // ป้องกัน click toggle ทันทีหลังลาก
+          setTimeout(() => suppressClick = false, 0);
+        } else {
+          // แค่คลิกธรรมดา — ให้ click handler ทำงานเอง
+          $$('#fileList .file-item.drag-mark').forEach(el => el.classList.remove('drag-mark'));
+        }
       });
 
-      // เรียง + กรองครั้งแรก
-      sortList(); applyFilters();
-    });
+      // sync เมื่อเช็กบ็อกซ์ถูกคลิกโดยตรง
+      fileList.addEventListener('change', (e) => {
+        if (!e.target.classList.contains('rowcheck')) return;
+        const item = e.target.closest('.file-item');
+        item.classList.toggle('selected', e.target.checked);
+        updateBar();
+      });
+    })();
   </script>
 </body>
+
 </html>

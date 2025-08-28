@@ -567,18 +567,46 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /* ลบโลโก้ */
-function confirmDeleteLogo(logoName) {
-  if (!logoName) return;
-  const ok = confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบโลโก้ "${logoName}" ?`);
-  if (!ok) return;
-  fetch(`/delete_logo/${encodeURIComponent(logoName)}`, {
-    method: "DELETE",
-  }).then((res) => {
-    if (res.ok) {
-      alert("ลบโลโก้เรียบร้อยแล้ว");
-      location.reload();
+function toast(msg, type = 'ok') {
+  console.log(type.toUpperCase() + ': ' + msg);
+}
+
+function confirmDeleteLogo(name, ev) {
+  if (!name) return;
+  if (!confirm(`ลบโลโก้ “${name}” ใช่ไหม?`)) return;
+
+  const btn = ev?.currentTarget || null;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+  }
+
+  fetch('/delete_logo', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name })
+  })
+  .then(r => r.json().catch(() => ({ success: false, error: 'bad json' })))
+  .then(res => {
+    if (res.success) {
+      // ลบรูป/ไอเท็มออกจากแกลเลอรี
+      const item = document.querySelector(`.logo-thumb[data-logo="${CSS.escape(name)}"]`);
+      if (item) item.remove();
+
+      // ถ้าโลโก้นี้กำลังถูกเลือกอยู่ ก็เคลียร์ค่าในฟอร์ม
+      const hidden = document.getElementById('logoInput');
+      if (hidden && hidden.value === name) hidden.value = '';
+
+      toast('ลบโลโก้แล้ว', 'ok');
     } else {
-      alert("ไม่สามารถลบโลโก้ได้");
+      toast(res.error || 'ลบไม่สำเร็จ', 'error');
+    }
+  })
+  .catch(() => toast('ลบไม่สำเร็จ', 'error'))
+  .finally(() => {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
     }
   });
 }

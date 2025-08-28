@@ -1,5 +1,5 @@
 .env
-static/analytics.json
-static/shortlinks.json
 static/files
 static/logo
+static/analytics.json
+static/shortlinks.json
