@@ -1,290 +1,114 @@
 <!doctype html>
 <html lang="th">
-
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>Admin · Files</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Bootstrap + Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    :root {
-      --bg: #0f1116;
-      --panel: #171a21;
-      --border: rgba(255, 255, 255, .10);
-      --muted: #a9b3c6;
-      --accent: #fb87b0;
-      --accent-2: #ec407a;
-      --chip: #202532;
+    :root{
+      --bg:#0c0f15; --panel:#141a22; --panel-2:#10151c;
+      --border:#2a3340; --text:#f1f6ff; --muted:#a9b3c6;
+      --accent:#fb87b0; --accent-2:#ec407a; --ring:rgba(255,133,192,.28);
+      --chip:#202532;
     }
 
-    /* ===== BG: ทำเป็น vignette แบบ fixed กันซ้ำ/เป็นแถบ ===== */
-    body {
-      background: #0f1116;
-      /* พื้นทึบก่อน */
-      color: #e9eef5;
-      position: relative;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: -20%;
-      /* เผื่อขอบเพื่อกัน seam เมื่อเลื่อน */
-      z-index: -1;
-      pointer-events: none;
-      /* vignette นุ่ม ๆ 3 ชั้น ไม่เกิดการซ้ำตามความสูง */
+    /* ------- BG & Font (ให้เหมือน dashboard) ------- */
+    html,body{min-height:100%}
+    body{
       background:
-        radial-gradient(60% 50% at 85% 0%, rgba(251, 135, 176, .14), transparent 60%),
-        radial-gradient(65% 55% at 0% 100%, rgba(236, 64, 122, .10), transparent 65%),
-        radial-gradient(120% 100% at 50% 50%, rgba(255, 255, 255, .03), transparent 70%);
-      filter: saturate(105%);
+        radial-gradient(1200px 800px at 85% -10%, rgba(255,133,192,.14), transparent 60%),
+        radial-gradient(900px 700px at -10% 100%, rgba(120,168,255,.12), transparent 70%),
+        var(--bg);
+      color:var(--text);
+      font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     }
 
-    .toolbar {
-      position: sticky;
-      top: 10px;
-      z-index: 5;
-      backdrop-filter: blur(6px);
+    .container-xxl{padding:28px 16px 44px; max-width:1180px}
+
+    /* ------- Nav Pills ------- */
+    .nav-pills .nav-link{
+      color:var(--text);
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      margin-right:10px; border-radius:14px; padding:.5rem 1rem;
+      transition:transform .15s ease, box-shadow .2s ease;
     }
-
-    .card-panel {
-      background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
-      border: 1px solid var(--border);
-      border-radius: 16px;
+    .nav-pills .nav-link.active{
+      color:#fff; border-color:transparent;
+      background:linear-gradient(90deg,#fb87b0,#ec407a);
+      box-shadow:0 12px 30px var(--ring);
     }
+    .nav-pills .nav-link:hover{transform:translateY(-1px); box-shadow:0 10px 26px rgba(255,133,192,.18)}
 
-    /* ===== ช่องค้นหา: สีตัวอักษร/placeholder ชัดเจน ===== */
-    .search {
-      background: #1b1f26;
-      border: 1px solid rgba(255, 255, 255, .12);
-      color: #fff;
-      /* สีตัวอักษรขณะพิมพ์ */
-      caret-color: #fff;
-      /* สีเคอร์เซอร์ */
-      border-radius: 12px;
-      padding: .7rem 1rem;
+    /* ------- Panels / Card ------- */
+    .card-panel{
+      background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid var(--border); border-radius:18px; box-shadow:0 16px 42px rgba(0,0,0,.35);
     }
+    .toolbar{position:sticky; top:10px; z-index:5}
 
-    .search:focus {
-      outline: none;
-      border-color: rgba(251, 135, 176, .6);
-      box-shadow: 0 0 0 3px rgba(251, 135, 176, .25);
+    /* ------- Search + Controls ------- */
+    .search{
+      background:#19202a; border:1px solid var(--border); color:#fff; caret-color:#fff;
+      border-radius:12px; padding:.7rem 1rem;
     }
+    .search:focus{outline:none; box-shadow:0 0 0 .25rem var(--ring)}
+    .search::placeholder{color:#cbd5e6}
+    .filters .btn{border:1px solid var(--border); color:#e9eef5}
+    .filters .btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-color:transparent}
+    .sort-select{background:#19202a; border:1px solid var(--border); color:#fff; border-radius:10px}
 
-    /* placeholder ทุกเบราว์เซอร์ */
-    .search::placeholder {
-      color: #b7c1d6;
-      opacity: 1;
+    /* ------- File list ------- */
+    .file-list{list-style:none; padding:0; margin:0}
+    .file-item{
+      display:grid; grid-template-columns:56px 1fr auto; gap:16px; padding:14px 16px;
+      align-items:center; border-bottom:1px dashed rgba(255,255,255,.08);
     }
+    .file-item:last-child{border-bottom:none}
+    .thumb{width:48px; height:48px; border-radius:12px; object-fit:cover; background:#0e1013;
+      display:flex; align-items:center; justify-content:center; font-weight:700; color:#8892a6}
+    .name{font-weight:800; word-break:break-word}
+    .meta{color:var(--muted); font-size:.92rem}
+    .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+    .chip{background:var(--chip); border:1px solid var(--border); border-radius:999px; padding:.25rem .6rem; font-size:.85rem; color:#cdd6e6}
+    .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .btn-soft{border:1px solid var(--border); background:#19202a; color:#e9eef5; border-radius:10px}
+    .btn-grad{background:linear-gradient(90deg,var(--accent),var(--accent-2)); border:none; color:#fff; border-radius:10px}
+    .small-link{color:#8dd0ff; text-decoration:none} .small-link:hover{text-decoration:underline}
+    .section-title{font-size:1.75rem; font-weight:900} .muted{color:#a9b3c6}
 
-    .search::-webkit-input-placeholder {
-      color: #b7c1d6;
-    }
+    /* Multi-select */
+    .thumb-wrap{position:relative}
+    .selbox{position:absolute; left:-8px; top:-8px; display:none; transform:scale(1.05)}
+    .select-mode .selbox{display:block}
+    .bulkbar{position:sticky; bottom:12px; z-index:20}
+    .hidden-by-filter,.hidden-by-page{display:none!important}
 
-    .search:-ms-input-placeholder {
-      color: #b7c1d6;
-    }
-
-    .search::-ms-input-placeholder {
-      color: #b7c1d6;
-    }
-
-    /* Safari/Chrome autofill ให้ตัวอักษรอ่านออก */
-    .search:-webkit-autofill {
-      -webkit-text-fill-color: #fff;
-      transition: background-color 9999s ease-out;
-    }
-
-    .filters .btn {
-      border: 1px solid var(--border);
-      color: #e9eef5;
-    }
-
-    .filters .btn.active {
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      border-color: transparent;
-    }
-
-    .sort-select {
-      background: #1b1f26;
-      border: 1px solid var(--border);
-      color: #fff;
-      border-radius: 10px;
-    }
-
-    /* list */
-    .file-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .file-item {
-      display: grid;
-      grid-template-columns: 56px 1fr auto;
-      gap: 16px;
-      padding: 14px 16px;
-      align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, .06);
-    }
-
-    .file-item:last-child {
-      border-bottom: none;
-    }
-
-    .thumb {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      object-fit: cover;
-      background: #0e1013;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      color: #8892a6;
-    }
-
-    .name {
-      font-weight: 800;
-      word-break: break-word;
-    }
-
-    .meta {
-      color: var(--muted);
-      font-size: .92rem;
-    }
-
-    .chips {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: 6px;
-    }
-
-    .chip {
-      background: var(--chip);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: .25rem .6rem;
-      font-size: .85rem;
-      color: #cdd6e6
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .btn-soft {
-      border: 1px solid var(--border);
-      background: #1b1f26;
-      color: #e9eef5;
-      border-radius: 10px;
-    }
-
-    .btn-grad {
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      border: none;
-      color: #fff;
-      border-radius: 10px;
-    }
-
-    .small-link {
-      color: #8dd0ff;
-      text-decoration: none;
-    }
-
-    .small-link:hover {
-      text-decoration: underline;
-    }
-
-    .section-title {
-      font-size: 1.75rem;
-      font-weight: 900;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    @media (max-width: 768px) {
-      .file-item {
-        grid-template-columns: 48px 1fr;
-      }
-
-      .actions {
-        grid-column: 1 / -1
-      }
-    }
-
-    /* ==== Multi-select mode ==== */
-    .thumb-wrap {
-      position: relative;
-    }
-
-    .selbox {
-      position: absolute;
-      left: -8px;
-      top: -8px;
-      display: none;
-      transform: scale(1.05);
-    }
-
-    .select-mode .selbox {
-      display: block;
-    }
-
-    /* โชว์ checkbox ตอนเข้าสู่โหมดเลือก */
-    .bulkbar {
-      position: sticky;
-      bottom: 12px;
-      z-index: 20;
-    }
-
-    .bulkbar .card-panel {
-      backdrop-filter: blur(6px);
-    }
-
-    #toggleSelect.btn-grad {
-      color: #fff;
-    }
-
-    /* ไฮไลต์ปุ่มเมื่อเปิดโหมดเลือก */
-    /* ซ่อนไอเท็มแบบแยกชั้น: filter / page */
-    .hidden-by-filter,
-    .hidden-by-page {
-      display: none !important;
-    }
-
-    .nav-pills .nav-link {
-      color: #e9eef5;
-      border: 1px solid rgba(255, 255, 255, .12);
-      margin-right: 8px
-    }
-
-    .nav-pills .nav-link.active {
-      background: linear-gradient(90deg, #fb87b0, #ec407a);
-      border-color: transparent
+    @media (max-width:768px){
+      .file-item{grid-template-columns:48px 1fr}
+      .actions{grid-column:1 / -1}
     }
   </style>
 </head>
-
-<body class="py-3">
+<body>
 
   <div class="container-xxl">
-    <ul class="nav nav-pills mb-3">
+    <!-- Tabs -->
+    <ul class="nav nav-pills mb-3 gap-2">
       <li class="nav-item">
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">Dashboard</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-link {{ 'active' if request.endpoint=='admin_dashboard' else '' }}">Dashboard</a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('admin_index') }}" class="btn btn-outline-light">รายการไฟล์</a>
+        <a href="{{ url_for('admin_index') }}" class="nav-link {{ 'active' if request.endpoint in ['admin_index'] else '' }}">รายการไฟล์</a>
       </li>
     </ul>
 
@@ -313,12 +137,12 @@
             <div class="btn-group filters" role="group" aria-label="filter">
               <button data-type="all" class="btn btn-sm btn-dark active">ทั้งหมด</button>
               <button data-type="logo" class="btn btn-sm btn-dark">โลโก้</button>
-              <button data-type="pdf" class="btn btn-sm btn-dark">PDF</button>
-              <button data-type="mp3" class="btn btn-sm btn-dark">MP3</button>
-              <button data-type="image" class="btn btn-sm btn-dark">รูปภาพ</button>
+              <button data-type="pdf"  class="btn btn-sm btn-dark">PDF</button>
+              <button data-type="mp3"  class="btn btn-sm btn-dark">MP3</button>
+              <button data-type="image"class="btn btn-sm btn-dark">รูปภาพ</button>
             </div>
           </div>
-          <div class="col-12 col-lg-2">
+          <div class="col-6 col-lg-2">
             <select id="sort" class="form-select form-select-sm sort-select">
               <option value="mtime_desc">ล่าสุด → เก่า</option>
               <option value="mtime_asc">เก่า → ใหม่</option>
@@ -328,26 +152,22 @@
               <option value="size_asc">ขนาดน้อย → มาก</option>
             </select>
           </div>
-          <div class="col-12 col-lg-auto text-lg-end">
-            <button id="toggleSelect" class="btn btn-sm btn-outline-light">
-              <i class="bi bi-check2-square me-1"></i> เลือกหลายไฟล์
-            </button>
+
+          <div class="col-6 col-lg-2 text-lg-end">
+            <button id="toggleSelect" class="btn btn-soft btn-sm"><i class="bi bi-check2-square me-1"></i> เลือกหลายไฟล์</button>
           </div>
-          <!-- จำนวนต่อหน้า -->
+
+          <!-- Page size & Pager -->
           <div class="col-6 col-lg-2">
             <div class="d-flex align-items-center gap-2 justify-content-lg-end">
               <span class="muted small">แสดง</span>
               <select id="pageSize" class="form-select form-select-sm sort-select">
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
+                <option value="10" selected>10</option><option value="20">20</option>
+                <option value="50">50</option><option value="100">100</option>
               </select>
               <span class="muted small">รายการ</span>
             </div>
           </div>
-
-          <!-- ตัวนำทางหน้า -->
           <div class="col-6 col-lg-3">
             <div class="d-flex align-items-center gap-2 justify-content-lg-end">
               <button id="prevPage" class="btn btn-soft btn-sm">ก่อนหน้า</button>
@@ -363,16 +183,13 @@
     <div class="card-panel">
       <ul class="file-list" id="fileList">
         {% for r in rows %}
-        <li class="file-item" data-kind="{{ r.kind }}" data-atype="{{ r.atype or '' }}" data-name="{{ r.name }}"
-          data-size="{{ r.size }}" data-mtime="{{ r.mtime }}">
+        <li class="file-item" data-kind="{{ r.kind }}" data-atype="{{ r.atype or '' }}" data-name="{{ r.name }}" data-size="{{ r.size }}" data-mtime="{{ r.mtime }}">
           <!-- thumb -->
           <div class="thumb-wrap">
             <input type="checkbox" class="form-check-input selbox rowcheck">
             {% if r.thumb and (r.atype == 'image' or r.kind == 'logo') %}
             <img class="thumb" src="{{ r.thumb }}" alt="thumb">
-            {% else %}
-            <div class="thumb">–</div>
-            {% endif %}
+            {% else %}<div class="thumb">–</div>{% endif %}
           </div>
 
           <!-- info -->
@@ -393,16 +210,14 @@
 
           <!-- actions -->
           <div class="actions">
-            <a class="btn btn-soft btn-sm" href="{{ r.url }}" target="_blank"><i class="bi bi-box-arrow-up-right"></i>
-              เปิด</a>
-            <button class="btn btn-soft btn-sm" data-copy="{{ r.url }}"><i class="bi bi-clipboard-check"></i>
-              คัดลอก</button>
+            <a class="btn btn-soft btn-sm" href="{{ r.url }}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> เปิด</a>
+            <button class="btn btn-soft btn-sm" data-copy="{{ r.url }}"><i class="bi bi-clipboard-check"></i> คัดลอก</button>
 
             {% if r.short %}
-            <a class="small-link" href="{{ r.short }}" target="_blank">{{ r.short }}</a>
-            <button class="btn btn-soft btn-sm" data-copy="{{ r.short }}">คัดลอกสั้น</button>
+              <a class="small-link" href="{{ r.short }}" target="_blank">{{ r.short }}</a>
+              <button class="btn btn-soft btn-sm" data-copy="{{ r.short }}">คัดลอกสั้น</button>
             {% else %}
-            <button class="btn btn-outline-info btn-sm shorten-btn" data-url="{{ r.url }}">สร้างลิงก์สั้น</button>
+              <button class="btn btn-outline-info btn-sm shorten-btn" data-url="{{ r.url }}">สร้างลิงก์สั้น</button>
             {% endif %}
 
             <button class="btn btn-danger btn-sm del-btn"><i class="bi bi-trash"></i> ลบ</button>
@@ -411,6 +226,7 @@
         {% endfor %}
       </ul>
     </div>
+
     <!-- Bulk action bar -->
     <div id="bulkBar" class="bulkbar d-none">
       <div class="card-panel p-3">
@@ -438,219 +254,147 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const ADMIN_KEY = "{{ admin_key }}";
-    const $ = (s, r = document) => r.querySelector(s);
-    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+    let currentPage=1;
+    const toast=new bootstrap.Toast($('#toast'));
+    const showToast=m=>{ $('#toastBody').textContent=m; toast.show(); };
 
-    let currentPage = 1;
+    /* ไทย ICT */
+    const toThai=sec=>new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(sec*1000))+' (ICT)';
 
-    function visibleItemsAfterFilter() {
-      return $$('#fileList .file-item').filter(li => !li.classList.contains('hidden-by-filter'));
+    const visibleItemsAfterFilter = () => $$('#fileList .file-item').filter(li=>!li.classList.contains('hidden-by-filter'));
+
+    function renderPage(){
+      const perPage=parseInt($('#pageSize')?.value||'10',10);
+      const all=$$('#fileList .file-item');
+      const vis=visibleItemsAfterFilter();
+      const pages=Math.max(1,Math.ceil(vis.length/perPage));
+      currentPage=Math.min(Math.max(1,currentPage),pages);
+
+      all.forEach(li=>li.classList.add('hidden-by-page'));
+      const start=(currentPage-1)*perPage;
+      vis.slice(start,start+perPage).forEach(li=>li.classList.remove('hidden-by-page'));
+
+      $('#pageInfo').textContent=`${currentPage} / ${pages}`;
+      $('#prevPage').disabled=(currentPage<=1);
+      $('#nextPage').disabled=(currentPage>=pages);
     }
 
-    function renderPage() {
-      const perPage = parseInt($('#pageSize')?.value || '10', 10);
-      const all = $$('#fileList .file-item');                     // ทั้งหมด
-      const vis = visibleItemsAfterFilter();                      // ที่ผ่านการกรอง
-      const pages = Math.max(1, Math.ceil(vis.length / perPage));
-      currentPage = Math.min(Math.max(1, currentPage), pages);
+    function applyFilters(){
+      const q=$('#q').value.trim().toLowerCase();
+      const type=$('.filters .btn.active')?.dataset.type || 'all';
+      const items=$$('#fileList .file-item');
 
-      // ซ่อนแบบ 'by page' ทั้งหมดก่อน
-      all.forEach(li => li.classList.add('hidden-by-page'));
-
-      // แสดงเฉพาะช่วงของหน้าปัจจุบัน
-      const start = (currentPage - 1) * perPage;
-      vis.slice(start, start + perPage).forEach(li => li.classList.remove('hidden-by-page'));
-
-      // อัปเดตตัวควบคุม
-      $('#pageInfo').textContent = `${currentPage} / ${pages}`;
-      $('#prevPage').disabled = (currentPage <= 1);
-      $('#nextPage').disabled = (currentPage >= pages);
-    }
-
-
-    /* Toast */
-    const toast = new bootstrap.Toast($('#toast'));
-    function showToast(m) { $('#toastBody').textContent = m; toast.show(); }
-
-    /* เวลาไทย */
-    function toThai(sec) {
-      return new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' })
-        .format(new Date(sec * 1000)) + ' (ICT)';
-    }
-
-    /* ฟิลเตอร์ + เรียง */
-    function applyFilters() {
-      const q = $('#q').value.trim().toLowerCase();
-      const type = $('.filters .btn.active')?.dataset.type || 'all';
-      const items = $$('#fileList .file-item');
-
-      let vis = { all: 0, logo: 0, pdf: 0, mp3: 0, image: 0 };
-
-      items.forEach(it => {
-        const name = it.dataset.name.toLowerCase();
-        const kind = it.dataset.kind;       // logo/asset
-        const atype = it.dataset.atype;     // pdf/mp3/image/''
-        const matchQ = !q || name.includes(q);
-        const matchT = (type === 'all') || (type === 'logo' && kind === 'logo') || (type === atype);
-        const show = matchQ && matchT;
-
-        it.classList.toggle('hidden-by-filter', !show);
-
-        if (show) {
-          vis.all++; if (kind === 'logo') vis.logo++;
-          if (atype) vis[atype] = (vis[atype] || 0) + 1;
-        }
+      let vis={all:0,logo:0,pdf:0,mp3:0,image:0};
+      items.forEach(it=>{
+        const name=it.dataset.name.toLowerCase();
+        const kind=it.dataset.kind, atype=it.dataset.atype;
+        const matchQ=!q || name.includes(q);
+        const matchT=(type==='all') || (type==='logo' && kind==='logo') || (type===atype);
+        const show=matchQ && matchT;
+        it.classList.toggle('hidden-by-filter',!show);
+        if(show){ vis.all++; if(kind==='logo') vis.logo++; if(atype) vis[atype]=(vis[atype]||0)+1; }
       });
 
-      // อัปเดตตัวเลขหัวข้อ
-      $('#stat-all').textContent = vis.all;
-      $('#stat-logo').textContent = vis.logo;
-      $('#stat-pdf').textContent = vis.pdf || 0;
-      $('#stat-mp3').textContent = vis.mp3 || 0;
-      $('#stat-image').textContent = vis.image || 0;
+      $('#stat-all').textContent=vis.all;
+      $('#stat-logo').textContent=vis.logo;
+      $('#stat-pdf').textContent=vis.pdf||0;
+      $('#stat-mp3').textContent=vis.mp3||0;
+      $('#stat-image').textContent=vis.image||0;
 
-      currentPage = 1;        // กลับหน้าแรกเมื่อมีการกรอง/ค้นหา
-      renderPage();
+      currentPage=1; renderPage();
     }
 
-    function sortList() {
-      const mode = $('#sort').value;
-      const ul = $('#fileList');
-      const items = $$('#fileList .file-item');
-      const key = {
-        mtime_desc: e => -Number(e.dataset.mtime),
-        mtime_asc: e => Number(e.dataset.mtime),
-        name_asc: e => e.dataset.name.toLowerCase(),
-        name_desc: e => '\uffff' + e.dataset.name.toLowerCase(),
-        size_desc: e => -Number(e.dataset.size),
-        size_asc: e => Number(e.dataset.size),
+    function sortList(){
+      const mode=$('#sort').value, ul=$('#fileList'), items=$$('#fileList .file-item');
+      const key={
+        mtime_desc:e=>-Number(e.dataset.mtime),
+        mtime_asc:e=> Number(e.dataset.mtime),
+        name_asc :e=> e.dataset.name.toLowerCase(),
+        name_desc:e=> '\uffff'+e.dataset.name.toLowerCase(),
+        size_desc:e=>-Number(e.dataset.size),
+        size_asc :e=> Number(e.dataset.size),
       }[mode];
-      items.sort((a, b) => key(a) > key(b) ? 1 : -1).forEach(li => ul.appendChild(li));
-      currentPage = 1;
-      renderPage();
+      items.sort((a,b)=> key(a)>key(b)?1:-1).forEach(li=>ul.appendChild(li));
+      currentPage=1; renderPage();
     }
 
-    /* ลบ / ย่อ / คัดลอก */
-    function deleteItem(li) {
-      const fd = new FormData();
+    function deleteItem(li){
+      const fd=new FormData();
       fd.append('kind', li.dataset.kind);
-      fd.append('atype', li.dataset.atype || '');
+      fd.append('atype', li.dataset.atype||'');
       fd.append('name', li.dataset.name);
-      return fetch('/admin/delete', { method: 'POST', body: fd, credentials: 'same-origin'})
-        .then(r => r.json()).then(d => {
-          if (!d.success) throw new Error(d.error || 'ลบไม่สำเร็จ');
-          li.remove(); showToast('ลบแล้ว');
-          applyFilters();
+      return fetch('/admin/delete',{method:'POST',body:fd,credentials:'same-origin'})
+        .then(r=>r.json()).then(d=>{
+          if(!d.success) throw new Error(d.error||'ลบไม่สำเร็จ');
+          li.remove(); showToast('ลบแล้ว'); applyFilters();
         });
     }
-    function shortenUrl(longUrl, btn) {
-      btn.disabled = true; btn.textContent = 'กำลังสร้าง…';
-      const fd = new FormData(); fd.append('url', longUrl);
-      fetch('/admin/shorten', { method: 'POST', body: fd, credentials: 'same-origin' })
-        .then(r => r.json()).then(d => {
-          if (!d.success) throw new Error(d.error || 'fail');
-          showToast('สร้างลิงก์สั้นสำเร็จ');
-          location.reload();
-        }).catch(e => {
-          showToast(e.message || 'ผิดพลาด');
-          btn.disabled = false; btn.textContent = 'สร้างลิงก์สั้น';
+    function shortenUrl(url,btn){
+      btn.disabled=true; btn.textContent='กำลังสร้าง…';
+      const fd=new FormData(); fd.append('url',url);
+      fetch('/admin/shorten',{method:'POST',body:fd,credentials:'same-origin'})
+        .then(r=>r.json()).then(d=>{
+          if(!d.success) throw new Error(d.error||'fail');
+          showToast('สร้างลิงก์สั้นสำเร็จ'); location.reload();
+        }).catch(e=>{
+          showToast(e.message||'ผิดพลาด'); btn.disabled=false; btn.textContent='สร้างลิงก์สั้น';
         });
     }
-    /* === Multi-select === */
-    function toggleSelectMode(forceOn) {
+
+    function toggleSelectMode(forceOn){
       const on = forceOn ?? !document.body.classList.contains('select-mode');
-      document.body.classList.toggle('select-mode', on);
-      $('#bulkBar').classList.toggle('d-none', !on);
-      $('#toggleSelect').classList.toggle('btn-grad', on);
-      if (!on) { $$('.rowcheck').forEach(cb => cb.checked = false); updateSelCount(); }
+      document.body.classList.toggle('select-mode',on);
+      $('#bulkBar').classList.toggle('d-none',!on);
+      $('#toggleSelect').classList.toggle('btn-grad',on);
+      if(!on){ $$('.rowcheck').forEach(cb=>cb.checked=false); updateSelCount(); }
     }
-    function updateSelCount() { $('#selCount').textContent = $$('.rowcheck:checked').length; }
+    const updateSelCount=()=> $('#selCount').textContent=$$('.rowcheck:checked').length;
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // ปุ่มเปิด/ปิดโหมด
-      $('#toggleSelect')?.addEventListener('click', () => toggleSelectMode());
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // เวลาประเทศไทย
+      $$('#fileList .time').forEach(t=>{ const sec=Number(t.dataset.ts||0); if(sec>0) t.textContent=toThai(sec); });
 
-      // เช็ค/ยกเลิกเช็ค แล้วอัปเดตจำนวน
-      document.body.addEventListener('change', e => {
-        if (e.target.classList.contains('rowcheck')) updateSelCount();
-      });
-
-      // เลือกทั้งหมด (เฉพาะรายการที่มองเห็นหลังกรอง)
-      $('#selectAll')?.addEventListener('click', () => {
-        $$('#fileList .file-item:not(.d-none) .rowcheck').forEach(cb => cb.checked = true);
-        updateSelCount();
-      });
-
-      // เคลียร์การเลือก
-      $('#clearSel')?.addEventListener('click', () => {
-        $$('.rowcheck').forEach(cb => cb.checked = false);
-        updateSelCount();
-      });
-
-      // ลบหลายไฟล์
-      $('#bulkDel')?.addEventListener('click', () => {
-        const items = $$('.rowcheck:checked').map(cb => cb.closest('.file-item'));
-        if (items.length === 0) return;
-        if (!confirm(`ลบ ${items.length} รายการถาวร?`)) return;
-        Promise.allSettled(items.map(li => deleteItem(li))).then(() => {
-          showToast('ลบรายการที่เลือกแล้ว');
-          toggleSelectMode(false);
-          applyFilters();
-        });
-      });
-    });
-
-    /* Ready */
-    document.addEventListener('DOMContentLoaded', () => {
-      // ควบคุมแบ่งหน้า
-      $('#pageSize')?.addEventListener('change', () => { currentPage = 1; renderPage(); });
-      $('#prevPage')?.addEventListener('click', () => { currentPage--; renderPage(); });
-      $('#nextPage')?.addEventListener('click', () => { currentPage++; renderPage(); });
-
-      // ตอนลบไฟล์ ให้ re-render หน้า
-      const _oldDeleteItem = deleteItem;
-      window.deleteItem = (li) => _oldDeleteItem(li).then(() => renderPage());
-
-      // ถ้าคุณมีปุ่ม "เลือกทั้งหมด" ให้เลือกเฉพาะรายการบนหน้าปัจจุบัน
-      $('#selectAll')?.addEventListener('click', () => {
-        $$('#fileList .file-item:not(.hidden-by-filter):not(.hidden-by-page) .rowcheck')
-          .forEach(cb => cb.checked = true);
-        updateSelCount();
-      });
-
-      // เวลาไทย
-      $$('#fileList .time').forEach(t => {
-        const sec = Number(t.dataset.ts || 0);
-        if (sec > 0) t.textContent = toThai(sec);
-      });
-
-      // ค้นหา/กรอง/เรียง
+      // ค้นหา / กรอง / เรียง
       $('#q').addEventListener('input', applyFilters);
-      $$('.filters .btn').forEach(b => b.addEventListener('click', () => {
-        $$('.filters .btn').forEach(x => x.classList.remove('active'));
+      $$('.filters .btn').forEach(b=> b.addEventListener('click', ()=>{
+        $$('.filters .btn').forEach(x=>x.classList.remove('active'));
         b.classList.add('active'); applyFilters();
       }));
       $('#sort').addEventListener('change', sortList);
 
-      // ปุ่มคัดลอก/ย่อ/ลบ (event delegation)
-      document.body.addEventListener('click', e => {
-        const copyBtn = e.target.closest('[data-copy]');
-        if (copyBtn) { navigator.clipboard.writeText(copyBtn.getAttribute('data-copy')).then(() => showToast('คัดลอกแล้ว')); }
+      // แบ่งหน้า
+      $('#pageSize')?.addEventListener('change',()=>{currentPage=1; renderPage();});
+      $('#prevPage')?.addEventListener('click',()=>{currentPage--; renderPage();});
+      $('#nextPage')?.addEventListener('click',()=>{currentPage++; renderPage();});
 
-        const sBtn = e.target.closest('.shorten-btn');
-        if (sBtn) { shortenUrl(sBtn.dataset.url, sBtn); }
-
-        const del = e.target.closest('.del-btn');
-        if (del) {
-          const li = del.closest('.file-item');
-          if (confirm('ลบไฟล์นี้ถาวร?')) deleteItem(li);
-        }
+      // โหมดเลือกหลายไฟล์
+      $('#toggleSelect')?.addEventListener('click',()=>toggleSelectMode());
+      document.body.addEventListener('change', e=>{ if(e.target.classList.contains('rowcheck')) updateSelCount(); });
+      $('#selectAll')?.addEventListener('click',()=>{
+        $$('#fileList .file-item:not(.hidden-by-filter):not(.hidden-by-page) .rowcheck').forEach(cb=>cb.checked=true);
+        updateSelCount();
+      });
+      $('#clearSel')?.addEventListener('click',()=>{ $$('.rowcheck').forEach(cb=>cb.checked=false); updateSelCount(); });
+      $('#bulkDel')?.addEventListener('click',()=>{
+        const items=$$('.rowcheck:checked').map(cb=>cb.closest('.file-item'));
+        if(items.length===0) return;
+        if(!confirm(`ลบ ${items.length} รายการถาวร?`)) return;
+        Promise.allSettled(items.map(li=>deleteItem(li))).then(()=>{
+          showToast('ลบรายการที่เลือกแล้ว'); toggleSelectMode(false); applyFilters();
+        });
       });
 
+      // คัดลอก / ย่อ / ลบ (delegation)
+      document.body.addEventListener('click', e=>{
+        const copyBtn=e.target.closest('[data-copy]'); if(copyBtn){ navigator.clipboard.writeText(copyBtn.getAttribute('data-copy')).then(()=>showToast('คัดลอกแล้ว')); }
+        const sBtn=e.target.closest('.shorten-btn'); if(sBtn){ shortenUrl(sBtn.dataset.url, sBtn); }
+        const del=e.target.closest('.del-btn'); if(del){ const li=del.closest('.file-item'); if(confirm('ลบไฟล์นี้ถาวร?')) deleteItem(li); }
+      });
+
+      // เรียง + กรองครั้งแรก
       sortList(); applyFilters();
     });
   </script>
 </body>
-
 </html>
