@@ -13,7 +13,9 @@ from functools import wraps
 from io import BytesIO
 from pathlib import Path
 from threading import Lock
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
+from zoneinfo import ZoneInfo
+from dateutil.relativedelta import relativedelta
 import hashlib
 import hmac
 import json
@@ -21,6 +23,10 @@ import math
 import os
 import secrets
 import time
+import sqlite3
+from contextlib import contextmanager
+from typing import Iterator
+from flask import has_request_context
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageColor
@@ -32,11 +38,81 @@ from qrcode import QRCode, constants
 from qrcode.image.svg import SvgPathImage
 from werkzeug.utils import secure_filename, safe_join
 
+# ---------------------------------------------------------
+# Database configuration
+# ---------------------------------------------------------
+# สามารถกำหนด path DB ผ่าน ENV ได้ (ค่าเริ่มต้น: ./data/app.db)
+DB_PATH = Path(os.environ.get("APP_DB_PATH", "data/app.db"))
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+def _connect_db() -> sqlite3.Connection:
+    """
+    เปิดการเชื่อมต่อ SQLite พร้อมตั้งค่าเหมาะกับเว็บแอป
+    """
+    conn = sqlite3.connect(
+        DB_PATH,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+        check_same_thread=False,  # ให้ Flask threaded server ใช้งานได้
+    )
+    # อ่านผลลัพธ์แบบ dict-like: row['column_name']
+    conn.row_factory = sqlite3.Row
+
+    # ปรับแต่งประสิทธิภาพและความปลอดภัย
+    conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA journal_mode = WAL;")     # เขียนพร้อมอ่านได้ดีขึ้น
+    conn.execute("PRAGMA synchronous = NORMAL;")   # สมดุลความเร็ว/ความปลอดภัย
+    return conn
+
+
+@contextmanager
+def get_db() -> Iterator[sqlite3.Connection]:
+    """
+    Context manager สำหรับใช้งานฐานข้อมูล:
+        with get_db() as db:
+            db.execute("...")
+
+    - commit ให้อัตโนมัติถ้าไม่เกิดข้อผิดพลาด
+    - rollback ให้อัตโนมัติถ้าเกิดข้อผิดพลาด
+    - ปิด connection ให้อัตโนมัติเมื่อออกจากบล็อก
+    """
+    conn = _connect_db()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def ensure_schema() -> None:
+    """
+    สร้างตารางที่จำเป็น (ถ้ายังไม่มี)
+    - analytics: เก็บสถิติการใช้งาน เช่น visit/download/upload
+      ฟิลด์ ts ใช้เวลาปัจจุบัน (UTC) เป็นค่าเริ่มต้น
+    """
+    with get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS analytics (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                event      TEXT      NOT NULL,           -- เช่น 'visit' / 'download' / 'upload'
+                item_id    TEXT,
+                ip         TEXT,
+                user_agent TEXT
+            );
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_analytics_ts    ON analytics(ts);")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_analytics_event ON analytics(event);")
+
 # ------------------------------------------------------------------------------
 # App & Config
 # ------------------------------------------------------------------------------
 
 app = Flask(__name__)
+
+ensure_schema()
 
 # security / env
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -119,6 +195,81 @@ def admin_api_required(fn):
         return fn(*args, **kwargs)
     return _wrap
 
+# ---------- Helper : ดึงเดือนที่มีข้อมูล ----------
+def get_available_months():
+    """คืน [{'year':YYYY,'month':M}, ...] ตามจริงจากตาราง analytics; ถ้าไม่มีข้อมูลจะ fallback 24 เดือนย้อนหลัง"""
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT
+                    CAST(strftime('%Y', ts) AS INT) AS y,
+                    CAST(strftime('%m', ts) AS INT) AS m
+                FROM analytics
+                GROUP BY y, m
+                ORDER BY y DESC, m DESC
+            """).fetchall()
+        months = [{'year': r['y'], 'month': r['m']} for r in rows]
+    except Exception:
+        months = []
+
+    if not months:
+        today = date.today().replace(day=1)
+        cur = today
+        for _ in range(24):
+            months.append({'year': cur.year, 'month': cur.month})
+            cur = (cur - relativedelta(months=1)).replace(day=1)
+    return months
+
+# ---------- Helper : สร้างซีรีส์รายวันในช่วง [start_dt, end_dt) ----------
+def build_daily_series(start_dt: datetime, end_dt: datetime, tz: ZoneInfo):
+    """รวมสถิติรายวันในช่วง [start_dt, end_dt) จากตาราง analytics"""
+    utc_start = start_dt.astimezone(ZoneInfo("UTC")).isoformat()
+    utc_end   = end_dt.astimezone(ZoneInfo("UTC")).isoformat()
+
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT
+                DATE(ts) AS d,
+                SUM(CASE WHEN event='visit'    THEN 1 ELSE 0 END) AS visits,
+                COUNT(DISTINCT CASE WHEN event='visit' THEN ip END) AS uniques,
+                SUM(CASE WHEN event='download' THEN 1 ELSE 0 END) AS downloads,
+                SUM(CASE WHEN event='upload'   THEN 1 ELSE 0 END) AS uploads
+            FROM analytics
+            WHERE ts >= ? AND ts < ?
+            GROUP BY d
+        """, (utc_start, utc_end)).fetchall()
+
+    # แปลงเป็น dict ธรรมดาพร้อมตัวเลข (เผื่อค่าเป็น None)
+    bydate: dict[str, dict[str, int]] = {}
+    for r in rows:
+        d = r["d"]                          # 'YYYY-MM-DD'
+        bydate[d] = {
+            "uniques":   int(r["uniques"]   or 0),
+            "visits":    int(r["visits"]    or 0),
+            "downloads": int(r["downloads"] or 0),
+            "uploads":   int(r["uploads"]   or 0),
+        }
+
+    labels, uniques, visits, downloads, uploads = [], [], [], [], []
+    d = start_dt.date()
+    while d < end_dt.date():
+        k = d.isoformat()
+        v = bydate.get(k) or {"uniques": 0, "visits": 0, "downloads": 0, "uploads": 0}
+        labels.append(k)
+        uniques.append(v["uniques"])
+        visits.append(v["visits"])
+        downloads.append(v["downloads"])
+        uploads.append(v["uploads"])
+        d += timedelta(days=1)
+
+    return {
+        "labels": labels,
+        "uniques": uniques,
+        "visits": visits,
+        "downloads": downloads,
+        "uploads": uploads,
+    }
+
 # ------------------------------------------------------------------------------
 # Analytics (visits/unique/downloads/uploads) — Asia/Bangkok
 # ------------------------------------------------------------------------------
@@ -157,32 +308,45 @@ def _write_json(path: str, obj):
         json.dump(obj, f, ensure_ascii=False)
     os.replace(tmp, path)
 
-def track_visit(ip: str):
-    key = _today_key()
-    with _ANALYTICS_LOCK:
-        db = _read_json(ANALYTICS_DB_PATH, {})
-        day = db.setdefault(key, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
-        day["visits"] += 1
-        h = _hash_ip(ip or "unknown")
-        if h not in day["unique"]:
-            day["unique"].append(h)
-        _write_json(ANALYTICS_DB_PATH, db)
+def track_visit(ip: str | None = None, ua: str | None = None) -> None:
+    """
+    บันทึก visit ลงตาราง analytics
+    - ถ้าเรียกภายใน request context จะอ่าน IP และ User-Agent อัตโนมัติ
+    - สามารถส่ง ip/ua มาเองได้ (จะใช้ค่าที่ส่งมาแทน)
+    """
+    if has_request_context():
+        # ดึงจาก header เมื่อยังไม่ได้ส่งมาเอง
+        ip = ip or request.headers.get("X-Forwarded-For", request.remote_addr)
+        # บาง proxy จะส่ง IP มาหลายค่า คั่นด้วย comma -> เอาค่าแรก
+        if ip:
+            ip = ip.split(",")[0].strip()
+        ua = ua or request.headers.get(
+            "User-Agent",
+            getattr(request.user_agent, "string", "") if hasattr(request, "user_agent") else ""
+        )
+
+    ip_hashed = _hash_ip(ip or "unknown")
+    ua = (ua or "")[:255]  # กันยาวเกินคอลัมน์
+
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO analytics (ts, event, ip, user_agent) VALUES (CURRENT_TIMESTAMP, ?, ?, ?)",
+            ("visit", ip_hashed, ua),
+        )
 
 def track_download():
-    key = _today_key()
-    with _ANALYTICS_LOCK:
-        db = _read_json(ANALYTICS_DB_PATH, {})
-        day = db.setdefault(key, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
-        day["downloads"] += 1
-        _write_json(ANALYTICS_DB_PATH, db)
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO analytics (ts, event) VALUES (CURRENT_TIMESTAMP, ?)",
+            ("download",),
+        )
 
 def track_upload():
-    key = _today_key()
-    with _ANALYTICS_LOCK:
-        db = _read_json(ANALYTICS_DB_PATH, {})
-        day = db.setdefault(key, {"visits": 0, "unique": [], "downloads": 0, "uploads": 0})
-        day["uploads"] += 1
-        _write_json(ANALYTICS_DB_PATH, db)
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO analytics (ts, event) VALUES (CURRENT_TIMESTAMP, ?)",
+            ("upload",),
+        )
 
 def analytics_series(days: int = 30):
     db = _read_json(ANALYTICS_DB_PATH, {})
@@ -203,6 +367,18 @@ def analytics_series(days: int = 30):
         "downloads": downloads,
         "uploads": uploads,
     }
+    
+def available_years_from_json() -> list[int]:
+    """
+    อ่านไฟล์ static/analytics.json แล้วคืนลิสต์ปีที่มีข้อมูล (มาก -> น้อย)
+    ถ้าไฟล์ยังว่าง/ไม่มี ให้ fallback เป็น 5 ปีย้อนหลังนับจากปีปัจจุบัน
+    """
+    db = _read_json(ANALYTICS_DB_PATH, {})
+    years = sorted({int(k[:4]) for k in db.keys() if isinstance(k, str) and len(k) >= 4}, reverse=True)
+    if not years:
+        now_y = datetime.now(BKK_TZ).year
+        years = list(range(now_y, now_y - 5, -1))
+    return years
 
 def analytics_totals(days: int = 30):
     s = analytics_series(days)
@@ -348,7 +524,7 @@ def _human_bytes(n: int) -> str:
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    track_visit(request.headers.get("X-Forwarded-For", request.remote_addr))
+    track_visit()
 
     logos = [f for f in os.listdir(UPLOAD_FOLDER) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
     if request.method == "POST":
@@ -636,23 +812,68 @@ def admin_index():
 @admin_required
 def admin_dashboard():
     """
-    หน้า Dashboard — รองรับ ?days=(7|14|30|60) และจำไว้ใน session
+    โหมดวัน:   /admin/dashboard?days=7|14|30|60   (default = last selection or 30)
+    โหมดเดือน: /admin/dashboard?year=YYYY&month=MM
     """
-    raw = request.args.get("days", session.get("dash_days", 30))
-    try:
-        days = int(raw)
-    except (TypeError, ValueError):
-        days = 30
-    if days not in ALLOWED_DAYS:
-        days = 30
+    tz = ZoneInfo("Asia/Bangkok")
+    now = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    session["dash_days"] = days  # remember
+    # อ่านค่าที่ผู้ใช้เลือก
+    days  = request.args.get("days",  type=int)
+    year  = request.args.get("year",  type=int)
+    month = request.args.get("month", type=int)
+
+    # ตัดสินโหมด: ถ้ามีทั้ง year และ month ให้เข้าโหมดเดือน
+    mode = "days"
+    if year and month:
+        try:
+            start_dt = datetime(year, month, 1, tzinfo=tz)
+            end_dt   = start_dt + relativedelta(months=1)
+            mode = "month"
+        except Exception:
+            # ถ้าค่าไม่ถูกต้อง fallback เป็นโหมดวัน
+            days = 30
+
+    if mode == "days":
+        if days is None:
+            days = session.get("dash_days", 30)
+        if days not in ALLOWED_DAYS:
+            days = 30
+        session["dash_days"] = days
+        start_dt = now - timedelta(days=days - 1)  # รวมวันนี้
+        end_dt   = now + timedelta(days=1)
+
+    # ดึงซีรีส์
+    series = build_daily_series(start_dt, end_dt, tz)
+
+    # ยอดรวมไว้แสดงการ์ด
+    totals = {
+        "uniques":   sum(series["uniques"]),
+        "visits":    sum(series["visits"]),
+        "downloads": sum(series["downloads"]),
+        "uploads":   sum(series["uploads"]),
+        "today": {
+            "uniques":   (series["uniques"][-1]   if series["uniques"]   else 0),
+            "visits":    (series["visits"][-1]    if series["visits"]    else 0),
+            "downloads": (series["downloads"][-1] if series["downloads"] else 0),
+            "uploads":   (series["uploads"][-1]   if series["uploads"]   else 0),
+        },
+    }
+
+    # รายการปี/เดือนที่มีข้อมูล (ใช้ทำดรอปดาวน์)
+    avail_months = get_available_months()
+    years = sorted({m['year'] for m in avail_months}, reverse=True)
 
     return render_template(
         "admin_dashboard.html",
-        days=days,
-        series=analytics_series(days),
-        totals=analytics_totals(days),
+        mode=mode,
+        days=(days if mode == "days" else None),
+        year=(year if mode == "month" else None),
+        month=(month if mode == "month" else None),
+        series=series,
+        totals=totals,
+        available_months=avail_months,
+        years=years,
         **_admin_nav_urls(),
     )
 
